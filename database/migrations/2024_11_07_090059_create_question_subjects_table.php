@@ -15,10 +15,12 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('question_id');
             $table->uuid('subject_id');
+            $table->uuid('group_question_id')->nullable();
             $table->timestamps();
 
             $table->foreign('question_id')->references('id')->on('questions')->onDelete('cascade');
             $table->foreign('subject_id')->references('id')->on('subjects')->onDelete('cascade');
+            $table->foreign('group_question_id')->references('id')->on('group_questions')->onDelete('cascade');
         });
     }
 
