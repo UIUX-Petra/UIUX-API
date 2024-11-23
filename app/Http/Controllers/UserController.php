@@ -2,15 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Question;
+use App\Models\User;
 use Illuminate\Http\Request;
 
-class QuestionController extends BaseController
+class UserController extends BaseController
 {
-    public function __construct(Question $model)
+    public function __construct(User $model)
     {
         parent::__construct($model);
     }
-
     
 }

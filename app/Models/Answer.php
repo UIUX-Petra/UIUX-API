@@ -9,4 +9,8 @@ class Answer extends Model
 {
     use HasUuids;
     //
+
+    public function relations(){
+        return [];
+    }
 }

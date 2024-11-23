@@ -9,4 +9,8 @@ class Comment extends Model
 {
     use HasUuids;
     //
+
+    public function relations(){
+        return [];
+    }
 }

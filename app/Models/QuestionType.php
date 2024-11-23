@@ -8,5 +8,8 @@ use Illuminate\Database\Eloquent\Model;
 class QuestionType extends Model
 {
     use HasUuids;
-    //
+    
+    public function relations(){
+        return [];
+    }
 }
