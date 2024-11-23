@@ -13,7 +13,8 @@ return new class extends Migration
     {
         Schema::create('answers', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->integer('vote');
+            $table->integer('vote')->default(0);
+            $table->string('image')->nullable();
             $table->text('answer');
             $table->uuid('question_id');
             $table->uuid('user_id');
