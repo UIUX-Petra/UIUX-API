@@ -10,7 +10,10 @@ Route::get('/', function () {
 });
 
 Route::apiResource('questions', QuestionController::class);
+Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
+
 Route::apiResource('answers', AnswerController::class);
+Route::get('/answers/{question_id}', [AnswerController::class, 'getAnswerByQuestionId']);
 
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::middleware(['auth:sanctum'])->group(function () {

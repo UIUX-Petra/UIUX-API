@@ -11,6 +11,9 @@ class QuestionController extends BaseController
     {
         parent::__construct($model);
     }
-
     
+    public function getQuestionByAnswerId($answer_id){
+        $question = Question::with($this->model->relatons())->findOrFail($answer_id);
+        return $this->success('Successfully retrieved data',$question);
+    }
 }
