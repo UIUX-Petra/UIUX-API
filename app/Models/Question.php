@@ -12,7 +12,8 @@ class Question extends Model
     protected $fillable = [
         'vote',
         'image',
-        'question'
+        'question',
+        'user_id'
     ];
 
     protected $hidden = [
@@ -50,10 +51,10 @@ class Question extends Model
     public function relations(){
         return [
         "questionType",
-        "answers",
-        "comments",
+        "answer",
+        "comment",
         "user",
-        "groupQuestions"
+        "groupQuestion"
     ];
     }
     
@@ -62,12 +63,12 @@ class Question extends Model
         return $this->hasMany(QuestionType::class, 'question_id');
     }
 
-    public function answers()
+    public function answer()
     {
         return $this->hasMany(Answer::class, 'question_id');
     }
 
-    public function comments()
+    public function comment()
     {
         return $this->hasMany(Comment::class, 'question_id');
     }
@@ -77,7 +78,7 @@ class Question extends Model
         return $this->belongsTo(User::class, 'user_id');
     }
     
-    public function groupQuestions()
+    public function groupQuestion()
     {
         return $this->belongsTo(GroupQuestion::class, 'group_id');
     }
