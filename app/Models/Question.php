@@ -24,7 +24,7 @@ class Question extends Model
     public static function validationRules()
     {
         return [
-            'vote' => 'required|integer|min:0',
+            'vote' => 'integer',
             'image' => 'nullable|file|mimes:png,jpg,jpeg|max:5120', //5MB
             'question' => 'required|string'
         ];
@@ -33,9 +33,7 @@ class Question extends Model
     public static function validationMessages()
     {
         return [
-            'vote.required' => 'The total vote field is required.',
             'vote.integer' => 'The total vote must be an integer.',
-            'vote.min' => 'The total vote must be at least 0.',
 
             'image.file' => 'The uploaded file must be a valid file.',
             'image.mimes' => 'The image must be a file of type: png, jpg, jpeg.',
@@ -45,8 +43,6 @@ class Question extends Model
             'question.string' => 'The question must be a valid string.',
         ];
     }
-
-    //Relationships
 
     public function relations(){
         return [

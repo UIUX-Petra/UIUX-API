@@ -12,6 +12,7 @@ class Answer extends Model
     protected $fillable = [
         'vote',
         'answer',
+        'image',
         'question_id',
         'user_id'
     ];
@@ -21,26 +22,32 @@ class Answer extends Model
         'created_at'
     ];
 
-    public static function validationRules(){
+    public static function validationRules()
+    {
         return [
-            'vote' => 'required|integer|min:0',
-            'answer'=>'required|string'
-    ];
-    }
-
-    public static function validationMessages(){
-        return [
-            'vote.required' => 'The total vote field is required.',
-            'vote.integer' => 'The total vote must be an integer.',
-            'vote.min' => 'The total vote must be at least 0.',
-
-            'answer.required' => 'The answer field is required.',
-            'answer.string' => 'The answer must be a valid string.',
+            'vote' => 'integer',
+            'answer' => 'required|string',
+            'image' => 'nullable|file|mimes:png,jpg,jpeg|max:5120', //5MB
         ];
     }
 
-    public function relations(){
-        return ['user','question','comment'];
+    public static function validationMessages()
+    {
+        return [
+            'vote.integer' => 'The total vote must be an integer.',
+
+            'answer.required' => 'The answer field is required.',
+            'answer.string' => 'The answer must be a valid string.',
+
+            'image.file' => 'The uploaded file must be a valid file.',
+            'image.mimes' => 'The image must be a file of type: png, jpg, jpeg.',
+            'image.max' => 'The image size must not exceed 5MB.',
+        ];
+    }
+
+    public function relations()
+    {
+        return ['user', 'question', 'comment'];
     }
 
     public function user()

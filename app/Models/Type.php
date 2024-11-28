@@ -8,5 +8,5 @@ use Illuminate\Database\Eloquent\Model;
 class Type extends Model
 {
     use HasUuids;
-    //
+    // Ga kepake ini ga si, gada apa apanya (ganti ke subject)
 }
