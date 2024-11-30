@@ -6,6 +6,7 @@ use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
+use Illuminate\Container\Attributes\CurrentUser;
 
 class UserController extends BaseController
 {
@@ -26,10 +27,14 @@ class UserController extends BaseController
     public function follow(string $id)
     {
 
-        $idCurrUser = session('id'); //Blum di test, karena lek postman ga nyimpen session
+        $idCurrUser = '9d9c7014-4b18-4f5f-a3fc-5c60fadeb601'; //Blum di test, karena lek postman ga nyimpen session
         $currUser = User::findOrFail($idCurrUser); 
 
         $mauDiFolo = User::findOrFail($id);
+
+        if($currUser == $mauDiFolo){
+            return $this->error('You Cannot Follow Yourself');
+        }
 
         if ($mauDiFolo) {     //jika user yang mau difolo ada di DB USER, bisa folo
 
@@ -59,11 +64,3 @@ class UserController extends BaseController
     }
 }
 
-/*
-Note Kvn: 
-
-User::findOrFail($idCurrUser) ambil model tanpa mengambil relasi apapun (tanpa with)
-jadi kalau butuh relasi following(), harus dipanggil lagi $currUser->following(); atau pakai 
-$currUser->load([rel1(), rel2()])
-
- */
