@@ -33,6 +33,7 @@ class AuthController extends BaseController
         $user->tokens()->delete();
         $userToken = $user->createToken('user_token', ['user'])->plainTextToken;
 
+        session(['id'=>$user->id]);
         return $this->success(
             'Login success!',
             [

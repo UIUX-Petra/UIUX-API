@@ -16,6 +16,8 @@ return new class extends Migration
             $table->uuid('subject_id');
             $table->tinyInteger('type')->comment('0: test1, 1: UTS, 2: test2, 3: UAS');
             $table->timestamps();
+
+            $table->foreign('subject_id')->references('id')->on('subjects')->onDelete('cascade');
         });
     }
 

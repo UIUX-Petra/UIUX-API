@@ -70,7 +70,9 @@ class User extends Authenticatable
             'userAchievement',
             'answer',
             'comment',
-            'question'
+            'question',
+            'following',
+            'followers'
         ];
     }
     public function userAchievement()
@@ -88,5 +90,15 @@ class User extends Authenticatable
     public function question()
     {
         return $this->hasMany(Question::class, 'user_id');
+    }
+
+    public function following()
+    {
+        return $this->belongsToMany(User::class,'follows','follower_id','followed_id');
+    }
+
+    public function followers()
+    {
+        return $this->belongsToMany(User::class,'follows','followed_id', 'follower_id');
     }
 }
