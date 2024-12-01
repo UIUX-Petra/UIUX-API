@@ -22,6 +22,7 @@ Route::get('/users/{user_id}', [UserController::class, 'getFollower']);
 
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class,'register'])->name('register');
+Route::post('/manualLogin', [AuthController::class,'manualLogin'])->name('manualLogin');
 Route::middleware(['auth:sanctum'])->group(function () {
     
 });

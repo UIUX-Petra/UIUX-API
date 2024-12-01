@@ -18,6 +18,27 @@ class AuthController extends BaseController
         $this->userController = new UserController(new User());
     }
 
+    public function manualLogin(Request $request){
+        $user = $this->userController->model::where("email", $request->usernameOrEmail)->orWhere("username", $request->usernameOrEmail)->first();
+        if(!$user){
+            return $this->error("User or Email Not Found", HttpResponseCode::HTTP_NOT_FOUND);
+        }
+        if (!Hash::check($request->loginPassword, $user->password)) {
+            return $this->error("Wrong Password", HttpResponseCode::HTTP_UNAUTHORIZED);
+        }
+        $user->tokens()->delete();
+        $userToken = $user->createToken('user_token', ['user'])->plainTextToken;
+        return $this->success(
+            'Login success!',
+            [
+                'id' => $user->id,
+                'name' => $user->username,
+                'email' => $user->email,
+                'token' => $userToken,
+            ]
+        );
+    }
+
     public function register(Request $request)
     {
         $user = $this->userController->model::where('email', $request->email)->first();
