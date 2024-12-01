@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
@@ -24,15 +25,25 @@ class UserController extends BaseController
         );
     }
 
+    public function create($data)
+    {
+        Log::info($data);
+        return $this->model::create([
+            'username' => $data['username'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+        ]);
+    }
+
     public function follow(string $id)
     {
 
         $idCurrUser = '9d9c7014-4b18-4f5f-a3fc-5c60fadeb601'; //Blum di test, karena lek postman ga nyimpen session
-        $currUser = User::findOrFail($idCurrUser); 
+        $currUser = User::findOrFail($idCurrUser);
 
         $mauDiFolo = User::findOrFail($id);
 
-        if($currUser == $mauDiFolo){
+        if ($currUser == $mauDiFolo) {
             return $this->error('You Cannot Follow Yourself');
         }
 
@@ -45,7 +56,7 @@ class UserController extends BaseController
             }
         }
         return $this->success('Successfully retrieved data', [
-            'user' => $currUser->load(['following','followers'])
+            'user' => $currUser->load(['following', 'followers'])
         ]);
     }
 

@@ -21,6 +21,7 @@ Route::post('/users/{user_id}/follow', [UserController::class, 'follow']);
 Route::get('/users/{user_id}', [UserController::class, 'getFollower']);
 
 Route::post('/login', [AuthController::class, 'login'])->name('login');
+Route::post('/register', [AuthController::class,'register'])->name('register');
 Route::middleware(['auth:sanctum'])->group(function () {
     
 });

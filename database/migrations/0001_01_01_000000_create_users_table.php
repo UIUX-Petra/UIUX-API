@@ -16,6 +16,7 @@ return new class extends Migration
             $table->string('username')->unique();
             $table->string('email')->unique();
             $table->string('biodata')->nullable();
+            $table->string('password')->nullable();
             $table->integer('reputation')->default(0);
             $table->timestamps();
         });

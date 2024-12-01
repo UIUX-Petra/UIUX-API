@@ -4,8 +4,10 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Utils\HttpResponseCode;
+use Hash;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 class AuthController extends BaseController
 {
@@ -14,6 +16,27 @@ class AuthController extends BaseController
     public function __construct()
     {
         $this->userController = new UserController(new User());
+    }
+
+    public function register(Request $request)
+    {
+        $user = $this->userController->model::where('email', $request->email)->first();
+        if ($user) {
+            return $this->error('Email already exist', HttpResponseCode::HTTP_BAD_REQUEST);
+        }
+        $validator = Validator::make($request->all(), [
+            'username' => 'required|string|max:255|unique:users,username',
+            'email' => 'required|string|email|max:255|unique:users,email',
+            'password' => 'required|string|min:8',
+        ]);
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), HttpResponseCode::HTTP_UNPROCESSABLE_ENTITY);
+        }
+        $validated = $validator->validated();
+        $validated['password'] = Hash::make($validated['password']);
+        $user = $this->userController->create($validated);
+        Log::info($user);
+        return $this->success('User registered successfully.', HttpResponseCode::HTTP_CREATED);
     }
 
     public function login(Request $request)
@@ -33,7 +56,7 @@ class AuthController extends BaseController
         $user->tokens()->delete();
         $userToken = $user->createToken('user_token', ['user'])->plainTextToken;
 
-        session(['id'=>$user->id]);
+        session(['id' => $user->id]);
         return $this->success(
             'Login success!',
             [
