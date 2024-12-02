@@ -8,9 +8,29 @@ use Illuminate\Database\Eloquent\Model;
 class Comment extends Model
 {
     use HasUuids;
-    //
 
-    public function relations(){
+    protected $fillable = ['comment'];
+
+    protected $hidden = [
+        'updated_at',
+        'created_at'
+    ];
+
+    public static function validationRules()
+    {
+        return ['comment' => 'required|string'];
+    }
+
+    public static function validationMessages()
+    {
+        return [
+            'comment.required' => 'The comment field is required.',
+            'comment.string' => 'The comment must be a valid string.',
+        ];
+    }
+
+    public function relations()
+    {
         return [];
     }
 }
