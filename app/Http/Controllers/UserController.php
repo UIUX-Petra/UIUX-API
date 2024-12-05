@@ -35,19 +35,22 @@ class UserController extends BaseController
         ]);
     }
 
-    public function follow(string $id)
+    public function getByEmail(string $email){
+        $userDiCari = $this->model::where('email', $email)->with('relations')->get()->first();
+        return $this->success('Successfully retrieved data', $userDiCari);
+    }
+
+    public function follow(string $email, Request $reqs)
     {
+        $emailCurrUser = $reqs->emailCurr;
+        $currUser = $this->model::where('email', $emailCurrUser)->get()->first();
+        $mauDiFolo  = $this->model::where('email', $email)->get()->first();
 
-        $idCurrUser = '9d9c7014-4b18-4f5f-a3fc-5c60fadeb601'; //Blum di test, karena lek postman ga nyimpen session
-        $currUser = User::findOrFail($idCurrUser);
-
-        $mauDiFolo = User::findOrFail($id);
-
-        if ($currUser == $mauDiFolo) {
+        if ($currUser['id'] == $mauDiFolo['id']) {
             return $this->error('You Cannot Follow Yourself');
         }
 
-        if ($mauDiFolo) {     //jika user yang mau difolo ada di DB USER, bisa folo
+        if ($mauDiFolo) {
 
             if (($currUser->following()->where('followed_id', $mauDiFolo->id))->exists()) { //unFoll
                 $currUser->following()->detach($mauDiFolo->id);
@@ -55,21 +58,24 @@ class UserController extends BaseController
                 $currUser->following()->attach($mauDiFolo->id, ['id' => Str::uuid()]); //Folo
             }
         }
+        $mauDiFolo=$mauDiFolo->load(['following','followers']);
+        
         return $this->success('Successfully retrieved data', [
-            'user' => $currUser->load(['following', 'followers'])
+            'user' => $currUser->load(['following', 'followers']),
+            'countFollowers'=>count($mauDiFolo['followers'])
         ]);
     }
 
-    public function getFollowing(User $id)
+    public function getFollowing(string $id)
     {
-        $user = User::find($id);
+        $user = $this->model::find($id);
         $followings = $user->following;
         return $this->success('Successfully retrieved data', $followings);
     }
 
-    public function getFollower(User $id)
+    public function getFollower(string $id)
     {
-        $user = User::find($id);
+        $user = $this->model::find($id);
         $followersUser = $user->followers;
         return $this->success('Successfully retrieved data', $followersUser);
     }
