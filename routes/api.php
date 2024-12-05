@@ -5,6 +5,7 @@ use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\UserController;
+use App\Http\Controllers\RecommendationController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -24,6 +25,8 @@ Route::get('/users/get/{email}', [UserController::class, 'getByEmail']); //pinda
 Route::post('/login', [AuthController::class, 'login'])->name('login');
 Route::post('/register', [AuthController::class,'register'])->name('register');
 Route::post('/manualLogin', [AuthController::class,'manualLogin'])->name('manualLogin');
+
+Route::get('/recommend', [RecommendationController::class, 'recommend'])->name('recommend');
 Route::middleware(['auth:sanctum'])->group(function () {
     
 });
