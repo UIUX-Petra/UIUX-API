@@ -3,12 +3,13 @@
 namespace App\Models;
 
 use App\Models\QuestionType;
+use App\Traits\HasVotes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Question extends Model
 {
-    use HasUuids;
+    use HasUuids, HasVotes;
     protected $fillable = [
         'vote',
         'image',
@@ -44,16 +45,17 @@ class Question extends Model
         ];
     }
 
-    public function relations(){
+    public function relations()
+    {
         return [
-        "questionType",
-        "answer",
-        "comment",
-        "user",
-        "groupQuestion"
-    ];
+            "questionType",
+            "answer",
+            "comment",
+            "user",
+            "groupQuestion"
+        ];
     }
-    
+
     public function questionType()
     {
         return $this->hasMany(QuestionType::class, 'question_id');
@@ -73,10 +75,14 @@ class Question extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
-    
+
     public function groupQuestion()
     {
         return $this->belongsTo(GroupQuestion::class, 'group_id');
     }
 
+    public function votes()
+    {
+        return $this->morphMany(Vote::class, 'votable');
+    }
 }
