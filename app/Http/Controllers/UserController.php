@@ -3,10 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use Http;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
-use Illuminate\Container\Attributes\CurrentUser;
 
 class UserController extends BaseController
 {
@@ -24,19 +25,83 @@ class UserController extends BaseController
         );
     }
 
-    public function follow(string $id)
+    public function create($data)
     {
+        return $this->model::create([
+            'username' => $data['username'],
+            'email' => $data['email'],
+            'password' => $data['password'],
+        ]);
+    }
 
-        $idCurrUser = '9d9c7014-4b18-4f5f-a3fc-5c60fadeb601'; //Blum di test, karena lek postman ga nyimpen session
-        $currUser = User::findOrFail($idCurrUser); 
+    public function getByEmail(string $email)
+    {
+        $userDiCari = $this->model::where('email', $email)->with('relations')->get()->first();
+        return $this->success('Successfully retrieved data', $userDiCari);
+    }
 
-        $mauDiFolo = User::findOrFail($id);
+    public function getUserWithRecommedation(Request $request)
+    {
+        $recommendations = [];
+        $recommendedUserIds = [];
+        if ($request->has('email')) {
+            $user = $this->model::where('email', $request->email)->first();
 
-        if($currUser == $mauDiFolo){
+            if ($user) {
+                try {
+                    $response = Http::get(env('PYTHON_API_URL') . '/recommend', [
+                        'user' => $user->id,
+                    ]);
+
+                    if ($response->successful()) {
+                        $recommendations = $response->json()['data'] ?? [];
+                        $recommendedUserIds = array_column($recommendations, 0);
+                    }
+                } catch (\Exception $e) {
+                    \Log::error('Failed to connect to recommendation API: ' . $e->getMessage());
+                }
+            } else {
+                Log::info('Invalid email provided: ' . $request->email);
+            }
+        }
+        $users = $this->model::orderBy('reputation', 'desc')->get();
+        $result = $users->map(function ($user) use ($recommendations, $recommendedUserIds) {
+            $isRecommended = in_array($user->id, $recommendedUserIds);
+            $score = $isRecommended
+                ? collect($recommendations)->firstWhere(0, $user->id)[1]
+                : null;
+            return [
+                'id' => $user->id,
+                'username' => $user->username,
+                'email' => $user->email,
+                'image' => $user->image,
+                'biodata' => $user->biodata,
+                'reputation' => $user->reputation,
+                'is_recommended' => $isRecommended,
+                'score' => $score,
+            ];
+        });
+        $sortedResult = $result->sortByDesc(function ($user) {
+            return [$user['is_recommended'], $user['reputation']];
+        })->values();
+        return $this->success('Data retrieved successfully.', $sortedResult);
+    }
+
+
+    public function follow(string $id, Request $reqs)
+    {
+        $currUser = $this->model::where('email', $reqs->emailCurr)->get()->first();
+        $mauDiFolo = $this->model::where('id', $id)->get()->first();
+
+        if (!$currUser || !$mauDiFolo) {
+            return $this->error('Missing User or Target');
+        }
+
+        if ($currUser['id'] == $mauDiFolo['id']) {
             return $this->error('You Cannot Follow Yourself');
         }
 
-        if ($mauDiFolo) {     //jika user yang mau difolo ada di DB USER, bisa folo
+        if ($mauDiFolo) {
 
             if (($currUser->following()->where('followed_id', $mauDiFolo->id))->exists()) { //unFoll
                 $currUser->following()->detach($mauDiFolo->id);
@@ -44,21 +109,24 @@ class UserController extends BaseController
                 $currUser->following()->attach($mauDiFolo->id, ['id' => Str::uuid()]); //Folo
             }
         }
+        $mauDiFolo = $mauDiFolo->load(['following', 'followers']);
+
         return $this->success('Successfully retrieved data', [
-            'user' => $currUser->load(['following','followers'])
+            'user' => $currUser->load(['following', 'followers']),
+            'countFollowers' => count($mauDiFolo['followers'])
         ]);
     }
 
-    public function getFollowing(User $id)
+    public function getFollowing(string $id)
     {
-        $user = User::find($id);
+        $user = $this->model::find($id);
         $followings = $user->following;
         return $this->success('Successfully retrieved data', $followings);
     }
 
-    public function getFollower(User $id)
+    public function getFollower(string $id)
     {
-        $user = User::find($id);
+        $user = $this->model::find($id);
         $followersUser = $user->followers;
         return $this->success('Successfully retrieved data', $followersUser);
     }
