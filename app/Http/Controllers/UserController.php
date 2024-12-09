@@ -40,11 +40,14 @@ class UserController extends BaseController
         return $this->success('Successfully retrieved data', $userDiCari);
     }
 
-    public function follow(string $email, Request $reqs)
+    public function follow(string $id, Request $reqs)   
     {
-        $emailCurrUser = $reqs->emailCurr;
-        $currUser = $this->model::where('email', $emailCurrUser)->get()->first();
-        $mauDiFolo  = $this->model::where('email', $email)->get()->first();
+        $currUser = $this->model::where('email', $reqs->emailCurr)->get()->first();
+        $mauDiFolo  = $this->model::where('id', $id)->get()->first();
+
+        if(!$currUser || !$mauDiFolo){
+            return $this->error('Missing User or Target');
+        }
 
         if ($currUser['id'] == $mauDiFolo['id']) {
             return $this->error('You Cannot Follow Yourself');
