@@ -4,13 +4,15 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
+use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Auth\Notifications\VerifyEmail;
 
-class User extends Authenticatable
+class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasUuids, HasFactory, Notifiable, HasApiTokens;
@@ -64,6 +66,11 @@ class User extends Authenticatable
             'reputation.integer' => 'The reputation must be a valid integer.',
         ];
     }
+    public function sendEmailVerificationNotification()
+    {
+        $this->notify(new VerifyEmail);
+    }
+
 
     public function relations()
     {
@@ -95,11 +102,11 @@ class User extends Authenticatable
 
     public function following()
     {
-        return $this->belongsToMany(User::class,'follows','follower_id','followed_id');
+        return $this->belongsToMany(User::class, 'follows', 'follower_id', 'followed_id');
     }
 
     public function followers()
     {
-        return $this->belongsToMany(User::class,'follows','followed_id', 'follower_id');
+        return $this->belongsToMany(User::class, 'follows', 'followed_id', 'follower_id');
     }
 }
