@@ -11,9 +11,11 @@ Route::get('/', function () {
     return view('welcome');
 });
 
-Route::post('/login', [AuthController::class, 'login'])->name('login');
-Route::post('/register', [AuthController::class, 'register'])->name('register');
-Route::post('/manualLogin', [AuthController::class, 'manualLogin'])->name('manualLogin');
+Route::post('/login', [AuthController::class, 'login']);
+Route::post('/register', [AuthController::class, 'register']);
+Route::post('/manualLogin', [AuthController::class, 'manualLogin']);
+
+Route::get('/userOnly', [UserController::class, 'getUserOnly']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('questions', QuestionController::class);

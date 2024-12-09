@@ -27,7 +27,6 @@ class UserController extends BaseController
 
     public function create($data)
     {
-        Log::info($data);
         return $this->model::create([
             'username' => $data['username'],
             'email' => $data['email'],
@@ -38,6 +37,10 @@ class UserController extends BaseController
     public function getByEmail(string $email){
         $userDiCari = $this->model::where('email', $email)->with('relations')->get()->first();
         return $this->success('Successfully retrieved data', $userDiCari);
+    }
+
+    public function getUserOnly(){
+        return $this->success('Successfully retrieved data', $this->model->get());
     }
 
     public function follow(string $id, Request $reqs)   
