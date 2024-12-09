@@ -15,7 +15,7 @@ Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/manualLogin', [AuthController::class, 'manualLogin']);
 
-Route::get('/userOnly', [UserController::class, 'getUserOnly']);
+Route::get('/userWithRecommedation', [UserController::class, 'getUserWithRecommedation']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('questions', QuestionController::class);
@@ -28,6 +28,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/users/{id}/follow', [UserController::class, 'follow']);
     Route::get('/users/{user_id}', [UserController::class, 'getFollower']);
     Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
-
-    Route::get('/recommend', [RecommendationController::class, 'recommend'])->name('recommend');
 });
