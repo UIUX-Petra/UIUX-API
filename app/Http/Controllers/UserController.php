@@ -25,6 +25,15 @@ class UserController extends BaseController
         );
     }
 
+    public function getUserId($email)
+    {
+        $user = $this->model::where('email', $email)->first();
+        if (!$user) {
+            return null;
+        }
+        return $user->id;
+    }
+
     public function create($data)
     {
         return $this->model::create([

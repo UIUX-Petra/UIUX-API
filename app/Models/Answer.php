@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\HasVotes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Answer extends Model
 {
-    use HasUuids;
+    use HasUuids, HasVotes;
 
     protected $fillable = [
         'vote',
@@ -61,5 +62,9 @@ class Answer extends Model
     public function comment()
     {
         return $this->hasMany(Comment::class, 'answer_id');
+    }
+    public function votes()
+    {
+        return $this->morphMany(Vote::class, 'votable');
     }
 }
