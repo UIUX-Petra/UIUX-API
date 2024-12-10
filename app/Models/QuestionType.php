@@ -10,6 +10,11 @@ class QuestionType extends Model
     use HasUuids;
     protected $table = 'question_subjects';
 
+    protected $hidden = [
+        'updated_at',
+        'created_at'
+    ];
+    
     public function relations(){
         return [];
     }

@@ -5,6 +5,8 @@ use App\Http\Controllers\AuthController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\UserController;
+use Illuminate\Foundation\Auth\EmailVerificationRequest;
+use Illuminate\Http\Request;
 use App\Http\Controllers\RecommendationController;
 
 Route::get('/', function () {
@@ -14,6 +16,18 @@ Route::get('/', function () {
 Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/manualLogin', [AuthController::class, 'manualLogin']);
+
+Route::get('/email/verify', function () {
+    return view('auth.verify-email');
+})->middleware('auth')->name('verification.notice');
+
+Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
+    ->name('verification.verify')
+    ->middleware('signed'); 
+
+Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail'])
+    ->name('verification.send')
+    ->middleware(['auth', 'throttle:6,1']); 
 
 Route::get('/userWithRecommedation', [UserController::class, 'getUserWithRecommedation']);
 
