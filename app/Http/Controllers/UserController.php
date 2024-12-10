@@ -45,7 +45,23 @@ class UserController extends BaseController
 
     public function getByEmail(string $email)
     {
-        $userDiCari = $this->model::where('email', $email)->with('relations')->get()->first();
+        // Log the incoming email
+        Log::info('Searching for user by email', ['email' => $email]);
+
+        $userDiCari = $this->model::where('email', $email)->with([ 'userAchievement',
+        'answer',
+        'comment',
+        'question',
+        'following',
+        'followers'])->get()->first();
+
+        // Log if the user was found or not
+        if ($userDiCari) {
+            Log::info('User found', ['user_id' => $userDiCari->id, 'email' => $email]);
+        } else {
+            Log::warning('User not found', ['email' => $email]);
+        }
+
         return $this->success('Successfully retrieved data', $userDiCari);
     }
 
@@ -140,4 +156,3 @@ class UserController extends BaseController
         return $this->success('Successfully retrieved data', $followersUser);
     }
 }
-
