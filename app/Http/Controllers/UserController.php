@@ -48,12 +48,7 @@ class UserController extends BaseController
         // Log the incoming email
         Log::info('Searching for user by email', ['email' => $email]);
 
-        $userDiCari = $this->model::where('email', $email)->with([ 'userAchievement',
-        'answer',
-        'comment',
-        'question',
-        'following',
-        'followers'])->get()->first();
+        $userDiCari = $this->model::where('email', $email)->with($this->model->relations())->get()->first();
 
         // Log if the user was found or not
         if ($userDiCari) {
@@ -83,7 +78,7 @@ class UserController extends BaseController
                         $recommendedUserIds = array_column($recommendations, 0);
                     }
                 } catch (\Exception $e) {
-                    \Log::error('Failed to connect to recommendation API: ' . $e->getMessage());
+                    Log::error('Failed to connect to recommendation API: ' . $e->getMessage());
                 }
             } else {
                 Log::info('Invalid email provided: ' . $request->email);
