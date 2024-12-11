@@ -1,5 +1,7 @@
 import mysql.connector
 from flask import Flask, request, jsonify
+import threading
+import time
 
 app = Flask(__name__)
 
@@ -42,26 +44,42 @@ class Graph:
 
 graph = Graph()
 
+last_processed_time = None
+db_lock = threading.Lock()
+
 def build_graph_from_db():
+    global last_processed_time
     conn = mysql.connector.connect(
         host='127.0.0.1',
         user='root',
         password='',
         database='tekweb_project'
     )
-    cursor = conn.cursor()
+    cursor = conn.cursor(dictionary=True)
+    if last_processed_time is None:
+        query = "SELECT * FROM follows ORDER BY created_at ASC"
+        cursor.execute(query)
+    else:
+        query = "SELECT * FROM follows WHERE created_at > %s ORDER BY created_at ASC"
+        cursor.execute(query, (last_processed_time,))
 
-    cursor.execute('SELECT follower_id, followed_id FROM follows')
     rows = cursor.fetchall()
 
-    for follower_id, followed_id in rows:
-        graph.add_follow(follower_id, followed_id)
+    with db_lock:
+        for row in rows:
+            graph.add_follow(row['follower_id'], row['followed_id'])
+            last_processed_time = row['created_at']
 
     conn.close()
 
-@app.before_request
-def initialize_graph():
-    build_graph_from_db()
+def monitor_db():
+    """Continuously monitor the database for updates."""
+    while True:
+        try:
+            build_graph_from_db()
+            time.sleep(2)
+        except Exception as e:
+            print(f"Error monitoring database: {e}")
 
 @app.route('/recommend', methods=['GET'])
 def recommend_api():
@@ -100,5 +118,7 @@ def recommend_api():
             "error": str(e)
         }), 500
 
+
 if __name__ == '__main__':
+    threading.Thread(target=monitor_db, daemon=True).start()
     app.run(debug=True, host='0.0.0.0')
