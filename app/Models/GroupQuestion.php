@@ -10,7 +10,7 @@ class GroupQuestion extends Model
     //
     use HasUuids;
 
-    protected $fillable = ['type'];
+    protected $fillable = ['type', 'subject_id'];
     protected $hidden = [
         'created_at',
         'updated_at'
@@ -38,6 +38,6 @@ class GroupQuestion extends Model
     }
     public function question()
     {
-        return $this->hasMany(Question::class, 'group_id');
+        return $this->hasMany(Question::class, 'group_question_id');
     }
 }

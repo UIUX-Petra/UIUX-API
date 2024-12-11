@@ -14,6 +14,8 @@ class Question extends Model
         'vote',
         'image',
         'question',
+        'subject_id',
+        'group_question_id',
         'user_id'
     ];
 
@@ -48,7 +50,7 @@ class Question extends Model
     public function relations()
     {
         return [
-            "questionType",
+            "subject",
             "answer",
             "comment",
             "user",
@@ -56,9 +58,9 @@ class Question extends Model
         ];
     }
 
-    public function questionType()
+    public function subject()
     {
-        return $this->hasMany(QuestionType::class, 'question_id');
+        return $this->belongsTo(Subject::class, 'subject_id');
     }
 
     public function answer()
@@ -78,7 +80,7 @@ class Question extends Model
 
     public function groupQuestion()
     {
-        return $this->belongsTo(GroupQuestion::class, 'group_id');
+        return $this->belongsTo(GroupQuestion::class, 'group_question_id');
     }
 
     public function votes()
