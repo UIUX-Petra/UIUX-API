@@ -28,7 +28,7 @@ Route::post('/email/verification-notification', [AuthController::class, 'resendV
     ->name('verification.send')
     ->middleware(['auth', 'throttle:6,1']); 
 
-Route::get('/userWithRecommedation', [UserController::class, 'getUserWithRecommedation']);
+Route::get('/userWithRecommendation', [UserController::class, 'getUserWithRecommendation']);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('questions', QuestionController::class);
