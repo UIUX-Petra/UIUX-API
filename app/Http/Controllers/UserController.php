@@ -25,6 +25,8 @@ class UserController extends BaseController
         );
     }
 
+  
+
     public function getUserId($email)
     {
         $user = $this->model::where('email', $email)->first();
