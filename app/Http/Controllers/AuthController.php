@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
+use App\Mail\EmailVerification; // assuming VerificationEmail is your Mailable class
+
 use App\Models\User;
 use App\Utils\HttpResponseCode;
 use Illuminate\Support\Facades\URL;
@@ -28,6 +33,10 @@ class AuthController extends BaseController
         if (!Hash::check($request->loginPassword, $user->password)) {
             return $this->error("Wrong Password", HttpResponseCode::HTTP_UNAUTHORIZED);
         }
+
+        if (!$user->hasVerifiedEmail()) {
+            return $this->error('Please verify your email first.',HttpResponseCode::HTTP_UNAUTHORIZED); // Forbidden
+        }
         $user->tokens()->delete();
         $userToken = $user->createToken('user_token', ['user'])->plainTextToken;
         return $this->success(
@@ -43,57 +52,60 @@ class AuthController extends BaseController
 
     public function register(Request $request)
     {
-        $user = $this->userController->model::where('email', $request->email)->first();
-        if ($user) {
-            return $this->error('Email already exist', HttpResponseCode::HTTP_BAD_REQUEST);
-        }
         $validator = Validator::make($request->all(), [
             'username' => 'required|string|max:255|unique:users,username',
             'email' => 'required|string|email|max:255|unique:users,email',
             'password' => 'required|string|min:8',
         ]);
+
         if ($validator->fails()) {
             return $this->error($validator->errors()->first(), HttpResponseCode::HTTP_UNPROCESSABLE_ENTITY);
         }
+
         $validated = $validator->validated();
         $validated['password'] = Hash::make($validated['password']);
-        $user = $this->userController->create($validated);
 
-        // Send email verification link
-        $user->sendEmailVerificationNotification();
+        // Create a unique token for this registration
+        $token = Str::random(60);
 
-        Log::info($user);
-        return $this->success('User registered successfully.', HttpResponseCode::HTTP_CREATED);
+        // Store the user data temporarily in Redis or Session
+        Cache::put("pending_user_{$token}", $validated, now()->addMinutes(30));  // Expire after 30 minutes
+
+        // Send email with the verification link containing the token
+        $user = $validated;
+        $user['token'] = $token;
+        Mail::to($validated['email'])->send(new EmailVerification($user));
+
+        return $this->success('User registered successfully. Please check your email for verification.', HttpResponseCode::HTTP_CREATED);
     }
-    public function verifyEmail($id, $hash)
+
+    public function verifyEmail($token)
     {
-        // Log the verification attempt
-        Log::info("Email verification attempt for user ID: {$id}");
-    
-        $user = User::find($id);
-    
-        if (!$user) {
-            return response()->json(['message' => 'User not found.'], 404);
+        // Retrieve the user data from the cache using the token
+        $userData = Cache::get("pending_user_{$token}");
+
+        if (!$userData) {
+            return response()->json(['message' => 'Verification link is invalid or expired.'], 400);
         }
-    
-        if ($user->hasVerifiedEmail()) {
-            return response()->json(['message' => 'Email already verified.'], 200);
-        }
-    
-        // Check if the URL signature is valid
-        if (!URL::hasValidSignature(request())) {
-            return response()->json(['message' => 'Verification link has expired or is invalid.'], 403);
-        }
-    
-        if (!hash_equals($hash, sha1($user->getEmailForVerification()))) {
-            return response()->json(['message' => 'Invalid verification link.'], 400);
-        }
-    
+
+        // The user data is valid, so now store it in the main `users` table
+        $user = User::create([
+            'username' => $userData['username'],
+            'email' => $userData['email'],
+            'password' => $userData['password'],
+            'verified' => true, // Mark as verified
+        ]);
+
+        // Mark the email as verified
         $user->markEmailAsVerified();
-    
-        return response()->json(['message' => 'Email verified successfully!'], 200);
+
+        // Delete the temporary user data from the cache
+        Cache::forget("pending_user_{$token}");
+
+        return response()->json(['message' => 'Email verified successfully. You can now log in.'], 200);
     }
-    
+
+
 
 
 
