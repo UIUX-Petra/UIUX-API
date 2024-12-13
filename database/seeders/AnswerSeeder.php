@@ -15,16 +15,16 @@ class AnswerSeeder extends Seeder
      */
     public function run(): void
     {
-        $users = User::all();
-        $questions = Question::all();
+        $userIds = User::pluck('id')->toArray();
+        $questionIds = Question::pluck('id')->toArray();
 
         foreach (range(1, 200) as $index) {
             Answer::create([
                 'vote' => rand(0, 50),
                 'image' => $index % 3 === 0 ? 'answer-image-' . $index . '.png' : null,
                 'answer' => 'Sample answer text for answer ' . $index,
-                'question_id' => $questions->random()->id,
-                'user_id' => $users->random()->id,
+                'question_id' => $questionIds[array_rand($questionIds)],
+                'user_id' => $userIds[array_rand($userIds)],
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
