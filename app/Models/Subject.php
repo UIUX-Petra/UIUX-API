@@ -11,7 +11,8 @@ class Subject extends Model
     use HasUuids;
 
     protected $fillable = [
-        'name'
+        'name',
+        'description'
     ];
 
     public static function validationRules()
@@ -31,14 +32,8 @@ class Subject extends Model
     
     public function relations(){
         return [
-            'questionType',
             'groupQuestion'
         ];
-    }
-
-    public function questionType()
-    {
-        return $this->hasMany(QuestionType::class, 'subject_id');
     }
 
     public function groupQuestion(){
