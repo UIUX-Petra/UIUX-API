@@ -15,17 +15,17 @@ class QuestionSeeder extends Seeder
      */
     public function run(): void
     {
-        $users = User::all();
-        $subjects = Subject::all();
+        $userIds = User::pluck('id')->toArray();
+        $subjectIds = Subject::pluck('id')->toArray();
 
         foreach (range(1, 100) as $index) {
-            $question = Question::create([
+            Question::create([
                 'question' => 'Sample question ' . $index,
                 'image' => $index % 2 === 0 ? 'sample-image-' . $index . '.jpg' : null,
                 'vote' => rand(0, 100),
-                'subject_id' => $subjects->random()->id,
+                'subject_id' => $subjectIds[array_rand($subjectIds)],
                 'group_question_id' => null,
-                'user_id' => $users->random()->id,
+                'user_id' => $userIds[array_rand($userIds)],
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

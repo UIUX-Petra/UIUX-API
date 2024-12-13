@@ -59,18 +59,15 @@ class Leaderboard:
         if subject_id not in self.subject_leaderboards:
             self.subject_leaderboards[subject_id] = []
             self.entry_map[subject_id] = {}
-
         leaderboard = self.subject_leaderboards[subject_id]
         entry_map = self.entry_map[subject_id]
-
         if user_id in entry_map:
-            entry = entry_map[user_id]
-            entry.contributions += contributions
+            entry_map[user_id].contributions = contributions
             heapq.heapify(leaderboard)
         else:
-            new_entry = UserContribution(user_id, contributions)
-            heapq.heappush(leaderboard, new_entry)
-            entry_map[user_id] = new_entry
+            entry = UserContribution(user_id, contributions)
+            heapq.heappush(leaderboard, entry)
+            entry_map[user_id] = entry
 
     def get_top_contributors(self, subject_id, top_n):
         if subject_id not in self.subject_leaderboards:
@@ -99,11 +96,14 @@ conn_pool = pooling.MySQLConnectionPool(
 )
 
 def fetch_from_db(query, params=None):
-    conn = conn_pool.get_connection()
     try:
+        conn = conn_pool.get_connection()
         with conn.cursor(dictionary=True) as cursor:
             cursor.execute(query, params or ())
             return cursor.fetchall()
+    except Exception as e:
+        print(f"Database error: {e}")
+        raise
     finally:
         conn.close()
 
@@ -173,42 +173,51 @@ def build_leaderboard_from_db():
         SELECT 
             contributions.user_id, 
             contributions.subject_id, 
-            COUNT(*) AS total_contributions
+            SUM(contributions.total_contributions) AS total_contributions,
+            MAX(contributions.updated_at) AS last_update
         FROM (
             SELECT 
                 q.user_id, 
                 q.subject_id, 
-                q.updated_at
+                COUNT(*) AS total_contributions,
+                MAX(q.updated_at) AS updated_at
             FROM questions q
+            GROUP BY q.user_id, q.subject_id
             UNION ALL
             SELECT 
                 a.user_id, 
                 q.subject_id, 
-                a.updated_at
+                COUNT(*) AS total_contributions,
+                MAX(a.updated_at) AS updated_at
             FROM answers a
-            JOIN questions q 
-            ON a.question_id = q.id
+            JOIN questions q ON a.question_id = q.id
+            GROUP BY a.user_id, q.subject_id
         ) AS contributions
-    """
-    
-    if last_processed_time:
-        query += " WHERE contributions.updated_at > %s"
-
-    query += """
+        WHERE (%s IS NULL OR contributions.updated_at > %s)
         GROUP BY contributions.user_id, contributions.subject_id
-        ORDER BY total_contributions DESC
+        ORDER BY contributions.updated_at ASC, total_contributions DESC
     """
-    
-    params = (last_processed_time,) if last_processed_time else ()
+    params = (last_processed_time, last_processed_time) if last_processed_time else (None, None)
+    print(params)
     rows = fetch_from_db(query, params)
-    
+    for row in rows:
+        print(row)
+
     with db_lock:
+        processed_subjects = set()
+        print(processed_subjects)
         for row in rows:
             subject_id = row['subject_id']
             user_id = row['user_id']
             total_contributions = row['total_contributions']
-            leaderboard.update_leaderboard(subject_id, user_id, total_contributions)
-            last_processed_time = row['updated_at']
+            if (subject_id, user_id) not in processed_subjects:
+                leaderboard.update_leaderboard(subject_id, user_id, total_contributions)
+                processed_subjects.add((subject_id, user_id))
+        if rows:
+            latest_update = max(row['last_update'] for row in rows)
+            print(f"Updating last_processed_time: {latest_update}")
+            last_processed_time = latest_update
+
 
 def monitor_leaderboard_db():
     while True:
