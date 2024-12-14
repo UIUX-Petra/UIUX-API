@@ -20,8 +20,9 @@ class QuestionSeeder extends Seeder
 
         foreach (range(1, 100) as $index) {
             Question::create([
+                'title' => 'title ' .$index,
                 'question' => 'Sample question ' . $index,
-                'image' => $index % 2 === 0 ? 'sample-image-' . $index . '.jpg' : null,
+                'image' => $index === 2 ? 'sample-image-' . $index . '.jpg' : null,
                 'vote' => rand(0, 100),
                 'subject_id' => $subjectIds[array_rand($subjectIds)],
                 'group_question_id' => null,
