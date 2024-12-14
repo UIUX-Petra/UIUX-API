@@ -12,6 +12,7 @@ class Question extends Model
     use HasUuids, HasVotes;
     protected $fillable = [
         'vote',
+        'title',
         'image',
         'question',
         'subject_id',

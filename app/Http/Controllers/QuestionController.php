@@ -15,6 +15,13 @@ class QuestionController extends BaseController
         $this->userController = new UserController(new User());
     }
 
+    public function store(Request $request){
+        $userId = $this->userController->getUserId($request->email);
+        $request->merge(['user_id' => $userId]);
+        $request->request->remove('email');
+        return parent::store($request);
+    }
+
     public function getQuestionByAnswerId($answer_id)
     {
         $question = $this->model::with($this->model->relatons())->findOrFail($answer_id);
