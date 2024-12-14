@@ -9,7 +9,7 @@ class Comment extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['comment'];
+    protected $fillable = ['question_id', 'answer_id', 'user_id', 'comment'];
 
     protected $hidden = [
         'updated_at',
@@ -31,6 +31,11 @@ class Comment extends Model
 
     public function relations()
     {
-        return [];
+        return ['user'];
+    }
+
+    public function user()
+    {
+        return $this->belongsTo(User::class, 'user_id');
     }
 }
