@@ -17,6 +17,7 @@ return new class extends Migration
             $table->string('question')->unique();
             $table->string('image')->nullable();
             $table->integer('vote')->default(0);
+            $table->integer('view')->default(0);
             $table->uuid('subject_id');
             $table->uuid('group_question_id')->nullable();
             $table->uuid('user_id');
