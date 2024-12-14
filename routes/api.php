@@ -41,8 +41,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/users/{id}/follow', [UserController::class, 'follow']);
     Route::get('/users/{user_id}', [UserController::class, 'getFollower']);
     Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
-    
-    Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
     Route::post('questions/{id}/upvote', [QuestionController::class, 'upvoteQuestion']);
     Route::post('questions/{id}/downvote', [QuestionController::class, 'downvoteQuestion']);
@@ -50,3 +48,4 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
 });
+Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
