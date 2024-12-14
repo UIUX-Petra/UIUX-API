@@ -32,14 +32,31 @@ class QuestionController extends BaseController
 
     public function viewQuestion(Request $request, $id)
     {
-        $question = $this->model::findOrFail($id);
+        $question = $this->model::with(array_merge($this->model->relations(), ['answer.user', 'answer.comment.user']))->findOrFail($id);
         $userId = $this->userController->getUserId($request->email);
         if (is_null($userId)) {
             return $this->error('User not found with the provided email.');
         }
+        $answers = $question->answer->map(function ($answer) {
+            return [
+                'id' => $answer->id,
+                'username' => $answer->user->username,
+                'image' => $answer->image,
+                'answer' => $answer->answer,
+                'vote' => $answer->vote,
+                'comments' => $answer->comment->map(function ($comment) {
+                    return [
+                        'id' => $comment->id,
+                        'username' => $comment->user->username,
+                        'comment' => $comment->comment,
+                    ];
+                }),
+            ];
+        });
+        $question->setRelation('answer', $answers);
         try {
             $question->view($userId);
-            return $this->success('Question upvoted successfully.', $question->vote);
+            return $this->success('Question viewed successfully.', $question);
         } catch (\Exception $e) {
             return $this->error($e->getMessage());
         }
