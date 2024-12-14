@@ -44,7 +44,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::post('questions/{id}/upvote', [QuestionController::class, 'upvoteQuestion']);
     Route::post('questions/{id}/downvote', [QuestionController::class, 'downvoteQuestion']);
-
+    
     Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
 });
+Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);

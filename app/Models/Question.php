@@ -2,14 +2,14 @@
 
 namespace App\Models;
 
-use App\Models\QuestionType;
+use App\Traits\HasViews;
 use App\Traits\HasVotes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Question extends Model
 {
-    use HasUuids, HasVotes;
+    use HasUuids, HasVotes, HasViews;
     protected $fillable = [
         'vote',
         'title',
@@ -39,6 +39,7 @@ class Question extends Model
     {
         return [
             'vote.integer' => 'The total vote must be an integer.',
+            'view.integer' => 'The total view must be an integer.',
 
             'image.file' => 'The uploaded file must be a valid file.',
             'image.mimes' => 'The image must be a file of type: png, jpg, jpeg.',
@@ -90,5 +91,9 @@ class Question extends Model
     public function votes()
     {
         return $this->morphMany(Vote::class, 'votable');
+    }
+
+    public function views(){
+        return $this->morphMany(View::class,'viewable');
     }
 }

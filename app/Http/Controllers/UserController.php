@@ -62,7 +62,7 @@ class UserController extends BaseController
         return $this->success('Successfully retrieved data', $userDiCari);
     }
 
-    public function getUserWithRecommedation(Request $request)
+    public function getUserWithRecommendation(Request $request)
     {
         $recommendations = [];
         $recommendedUserIds = [];

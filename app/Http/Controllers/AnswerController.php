@@ -15,6 +15,13 @@ class AnswerController extends BaseController
         $this->userController = new UserController(new User());
     }
 
+    public function store(Request $request){
+        $userId = $this->userController->getUserId($request->email);
+        $request->merge(['user_id' => $userId]);
+        $request->request->remove('email');
+        return parent::store($request);
+    }
+
     public function getAnswerByQuestionId($question_id)
     {
         $answers = $this->model::with($this->model->relations())->where('question_id', $question_id)->get();
