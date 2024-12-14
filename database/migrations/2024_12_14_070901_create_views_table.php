@@ -15,6 +15,7 @@ return new class extends Migration {
             $table->uuid('user_id');
             $table->uuid('viewable_id');
             $table->string('viewable_type');
+            $table->integer('total')->default(0);
             $table->timestamps();
 
             $table->unique(['user_id', 'viewable_id', 'viewable_type']);

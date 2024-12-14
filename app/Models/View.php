@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 class View extends Model
 {
     use HasFactory, HasUuids;
-    protected $fillable = ['user_id', 'viewable_id', 'viewable_type'];
+    protected $fillable = ['user_id', 'viewable_id', 'viewable_type', 'total'];
     public function viewable()
     {
         return $this->morphTo();
