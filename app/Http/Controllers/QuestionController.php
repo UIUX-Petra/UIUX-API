@@ -32,8 +32,11 @@ class QuestionController extends BaseController
 
     public function viewQuestion(Request $request, $id)
     {
-        $question = $this->model::with(array_merge($this->model->relations(), ['answer.user', 'answer.comment.user']))->findOrFail($id);
+        $question = $this->model::with(array_merge($this->model->relations(), ['comment.user', 'answer.user', 'answer.comment.user']))->findOrFail($id);
         $userId = $this->userController->getUserId($request->email);
+        if (!$question) {
+            return $this->error('Question not found with the provided id.');
+        }
         if (is_null($userId)) {
             return $this->error('User not found with the provided email.');
         }
@@ -53,7 +56,15 @@ class QuestionController extends BaseController
                 }),
             ];
         });
+        $comment = $question->comment->map(function ($comment) {
+            return [
+                'id' => $comment->id,
+                'username' => $comment->user->username,
+                'comment' => $comment->comment,
+            ];
+        });
         $question->setRelation('answer', $answers);
+        $question->setRelation('comment', $comment);
         try {
             $question->view($userId);
             return $this->success('Question viewed successfully.', $question);
