@@ -38,7 +38,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/answers/{question_id}', [AnswerController::class, 'getAnswerByQuestionId']);
 
     Route::apiResource('users', UserController::class);
-    Route::post('/users/{id}/follow', [UserController::class, 'follow']);
+    Route::post('/users/{email}/follow', [UserController::class, 'follow']);
     Route::get('/users/{user_id}', [UserController::class, 'getFollower']);
     Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
 

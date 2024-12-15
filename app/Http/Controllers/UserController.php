@@ -25,6 +25,12 @@ class UserController extends BaseController
         );
     }
 
+    public function index(){
+        $data = $this->model->with($this->model->relations())->get();
+        $data = $data->makeVisible(['created_at']);
+        return $this->success('Successfully retrieved data', $data);
+    }
+
     public function getUserId($email)
     {
         $user = $this->model::where('email', $email)->first();
@@ -108,10 +114,10 @@ class UserController extends BaseController
     }
 
 
-    public function follow(string $id, Request $reqs)
+    public function follow(string $email, Request $reqs)
     {
         $currUser = $this->model::where('email', $reqs->emailCurr)->get()->first();
-        $mauDiFolo = $this->model::where('id', $id)->get()->first();
+        $mauDiFolo = $this->model::where('email', $email)->get()->first();
 
         if (!$currUser || !$mauDiFolo) {
             return $this->error('Missing User or Target');
