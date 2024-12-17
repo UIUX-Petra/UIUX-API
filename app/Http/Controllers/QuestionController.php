@@ -2,18 +2,26 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Question;
 use App\Models\User;
-use App\Utils\HttpResponseCode;
+use App\Models\Subject;
+use App\Models\Question;
 use Illuminate\Http\Request;
+use App\Models\GroupQuestion;
+use App\Utils\HttpResponseCode;
+use Illuminate\Support\Facades\Log;
+use App\Http\Controllers\BaseController;
+use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Validator;
+use App\Http\Controllers\GroupQuestionController;
 
 class QuestionController extends BaseController
 {
-    protected $userController;
+    protected $userController, $tagsQuestionController;
     public function __construct(Question $model)
     {
         parent::__construct($model);
         $this->userController = new UserController(new User());
+        $this->tagsQuestionController = new GroupQuestionController(new GroupQuestion());
     }
 
     public function store(Request $request)
@@ -21,12 +29,25 @@ class QuestionController extends BaseController
         $userId = $this->userController->getUserId($request->email);
         $request->merge(['user_id' => $userId]);
         $request->request->remove('email');
-        return parent::store($request);
+
+        $data = $request->only($this->model->getFillable());
+        $valid = Validator::make($data, $this->model->validationRules(), $this->model->validationMessages());
+
+        if ($valid->fails()) {
+            $validationError = $valid->errors()->first();
+            Log::error("Validation failed:", ['error' => $validationError]);
+            return $this->error($validationError, HttpResponseCode::HTTP_NOT_ACCEPTABLE);
+        }
+
+        $model = $this->model->create($data);
+        $request->request->add( ['question_id'=> $model->id]);
+        $tagsQuestionids = $this->tagsQuestionController->store($request);
+        return $this->success('Data successfully saved to model', $model);
     }
 
     public function getQuestionByAnswerId($answer_id)
     {
-        $question = $this->model::with($this->model->relatons())->findOrFail($answer_id);
+        $question = $this->model::with($this->model->relations())->findOrFail($answer_id);
         return $this->success('Successfully retrieved data', $question);
     }
 

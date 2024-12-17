@@ -16,7 +16,6 @@ class QuestionSeeder extends Seeder
     public function run(): void
     {
         $userIds = User::pluck('id')->toArray();
-        $subjectIds = Subject::pluck('id')->toArray();
 
         foreach (range(1, 100) as $index) {
             Question::create([
@@ -24,8 +23,7 @@ class QuestionSeeder extends Seeder
                 'question' => 'Sample question ' . $index,
                 'image' => $index % 2 === 0 ? 'sample-image-' . $index . '.jpg' : null,
                 'vote' => rand(0, 100),
-                'subject_id' => $subjectIds[array_rand($subjectIds)],
-                'group_question_id' => null,
+                'view' => rand(0, 200),
                 'user_id' => $userIds[array_rand($userIds)],
                 'created_at' => now(),
                 'updated_at' => now(),

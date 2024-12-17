@@ -2,13 +2,16 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use App\Models\GroupQuestion;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Subject extends Model
 {
 
     use HasUuids;
+
+    protected $table = 'tags';
 
     protected $fillable = [
         'name',

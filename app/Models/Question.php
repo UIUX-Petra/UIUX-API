@@ -16,8 +16,6 @@ class Question extends Model
         'title',
         'image',
         'question',
-        'subject_id',
-        'group_question_id',
         'user_id'
     ];
 
@@ -30,8 +28,7 @@ class Question extends Model
     {
         return [
             'vote' => 'integer',
-            'view'=> 'integer',
-            'image' => 'nullable|file|mimes:png,jpg,jpeg|max:5120', //5MB
+            'view' => 'integer',
             'question' => 'required|string'
         ];
     }
@@ -42,10 +39,6 @@ class Question extends Model
             'vote.integer' => 'The total vote must be an integer.',
             'view.integer' => 'The total view must be an integer.',
 
-            'image.file' => 'The uploaded file must be a valid file.',
-            'image.mimes' => 'The image must be a file of type: png, jpg, jpeg.',
-            'image.max' => 'The image size must not exceed 5MB.',
-
             'question.required' => 'The question field is required.',
             'question.string' => 'The question must be a valid string.',
         ];
@@ -54,17 +47,11 @@ class Question extends Model
     public function relations()
     {
         return [
-            "subject",
             "answer",
             "comment",
             "user",
             "groupQuestion"
         ];
-    }
-
-    public function subject()
-    {
-        return $this->belongsTo(Subject::class, 'subject_id');
     }
 
     public function answer()
@@ -84,7 +71,7 @@ class Question extends Model
 
     public function groupQuestion()
     {
-        return $this->belongsTo(GroupQuestion::class, 'group_question_id');
+        return $this->hasMany(GroupQuestion::class, 'question_id');
     }
 
     public function votes()
@@ -92,7 +79,8 @@ class Question extends Model
         return $this->morphMany(Vote::class, 'votable');
     }
 
-    public function views(){
-        return $this->morphMany(View::class,'viewable');
+    public function views()
+    {
+        return $this->morphMany(View::class, 'viewable');
     }
 }
