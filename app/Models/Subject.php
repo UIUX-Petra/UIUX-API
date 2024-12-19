@@ -40,6 +40,6 @@ class Subject extends Model
     }
 
     public function groupQuestion(){
-        return $this->hasMany(GroupQuestion::class, 'subject_id');
+        return $this->hasMany(GroupQuestion::class, 'tag_id');
     }
 }

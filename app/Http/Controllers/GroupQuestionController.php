@@ -23,8 +23,8 @@ class GroupQuestionController extends BaseController
 
         $rel['question_id'] = $data['question_id'];
 
-        foreach ($data['subject_id'] as $subsID){
-            $rel['subject_id'] = $subsID;
+        foreach ($data['tag_id'] as $subsID){
+            $rel['tag_id'] = $subsID;
             $this->model->create($rel);
         };
         return $this->success('Data successfully saved to model', $this->model);
