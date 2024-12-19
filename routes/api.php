@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\AuthController;
+use App\Http\Controllers\CommentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\UserController;
@@ -38,6 +39,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('answers', AnswerController::class);
      
     Route::apiResource('tags', SubjectController::class);
+
+    Route::apiResource('comments', CommentController::class);
 
     Route::apiResource('users', UserController::class);
     Route::post('/users/{email}/follow', [UserController::class, 'follow']);
