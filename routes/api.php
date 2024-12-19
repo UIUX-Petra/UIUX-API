@@ -42,6 +42,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
      
     Route::apiResource('tags', SubjectController::class);
 
+    Route::apiResource('comments', CommentController::class);
+
     Route::apiResource('users', UserController::class);
     Route::post('/users/{email}/follow', [UserController::class, 'follow']);
     Route::get('/users/{user_id}', [UserController::class, 'getFollower']);
