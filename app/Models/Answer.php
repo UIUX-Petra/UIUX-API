@@ -28,7 +28,7 @@ class Answer extends Model
         return [
             'vote' => 'integer',
             'answer' => 'required|string',
-            'image' => 'nullable|file|mimes:png,jpg,jpeg|max:5120', //5MB
+            // 'image' => 'nullable|file|mimes:png,jpg,jpeg|max:5120', //5MB
         ];
     }
 
@@ -40,9 +40,9 @@ class Answer extends Model
             'answer.required' => 'The answer field is required.',
             'answer.string' => 'The answer must be a valid string.',
 
-            'image.file' => 'The uploaded file must be a valid file.',
-            'image.mimes' => 'The image must be a file of type: png, jpg, jpeg.',
-            'image.max' => 'The image size must not exceed 5MB.',
+            // 'image.file' => 'The uploaded file must be a valid file.',
+            // 'image.mimes' => 'The image must be a file of type: png, jpg, jpeg.',
+            // 'image.max' => 'The image size must not exceed 5MB.',
         ];
     }
 
