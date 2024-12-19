@@ -30,7 +30,7 @@ Route::post('/email/verification-notification', [AuthController::class, 'resendV
     ->name('verification.send')
     ->middleware(['auth', 'throttle:6,1']); 
 
-Route::get('/userWithRecommedation', [UserController::class, 'getUserWithRecommedation']);
+Route::get('/userWithRecommedation', [UserController::class, 'getUserWithRecommendation']);
 Route::apiResource('questions', QuestionController::class);
 Route::apiResource('comments', CommentController::class);
 Route::apiResource('users', UserController::class);

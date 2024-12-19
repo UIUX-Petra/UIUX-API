@@ -170,32 +170,34 @@ def recommend_api():
 def build_leaderboard_from_db():
     global last_processed_time
     query = """
-        SELECT 
-            contributions.user_id, 
-            contributions.subject_id, 
-            SUM(contributions.total_contributions) AS total_contributions,
-            MAX(contributions.updated_at) AS last_update
-        FROM (
             SELECT 
-                q.user_id, 
-                q.subject_id, 
-                COUNT(*) AS total_contributions,
-                MAX(q.updated_at) AS updated_at
-            FROM questions q
-            GROUP BY q.user_id, q.subject_id
-            UNION ALL
-            SELECT 
-                a.user_id, 
-                q.subject_id, 
-                COUNT(*) AS total_contributions,
-                MAX(a.updated_at) AS updated_at
-            FROM answers a
-            JOIN questions q ON a.question_id = q.id
-            GROUP BY a.user_id, q.subject_id
-        ) AS contributions
-        WHERE (%s IS NULL OR contributions.updated_at > %s)
-        GROUP BY contributions.user_id, contributions.subject_id
-        ORDER BY contributions.updated_at ASC, total_contributions DESC
+                contributions.user_id, 
+                contributions.subject_id, 
+                SUM(contributions.total_contributions) AS total_contributions,
+                MAX(contributions.updated_at) AS last_update
+            FROM (
+                SELECT 
+                    q.user_id, 
+                    sq.subject_id, 
+                    COUNT(*) AS total_contributions,
+                    MAX(q.updated_at) AS updated_at
+                FROM questions q
+                JOIN subject_questions sq ON q.id = sq.question_id
+                GROUP BY q.user_id, sq.subject_id
+                UNION ALL
+                SELECT 
+                    a.user_id, 
+                    sq.subject_id, 
+                    COUNT(*) AS total_contributions,
+                    MAX(a.updated_at) AS updated_at
+                FROM answers a
+                JOIN questions q ON a.question_id = q.id
+                JOIN subject_questions sq ON q.id = sq.question_id
+                GROUP BY a.user_id, sq.subject_id
+            ) AS contributions
+            WHERE (%s IS NULL OR contributions.updated_at > %s)
+            GROUP BY contributions.user_id, contributions.subject_id
+            ORDER BY last_update ASC, total_contributions DESC;
     """
     params = (last_processed_time, last_processed_time) if last_processed_time else (None, None)
     print(params)
