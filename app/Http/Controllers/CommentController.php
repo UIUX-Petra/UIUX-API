@@ -11,4 +11,8 @@ class CommentController extends BaseController
     {
         parent::__construct($model);
     }
+    
+    public function store(Request $request){
+
+    }
 }

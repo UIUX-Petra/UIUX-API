@@ -12,7 +12,6 @@ class Question extends Model
     use HasUuids, HasVotes, HasViews;
     protected $fillable = [
         'vote',
-        'view',
         'title',
         'image',
         'question',
@@ -28,6 +27,8 @@ class Question extends Model
     {
         return [
             'vote' => 'integer',
+            'title' => 'required|string',
+            'image' => 'nullable|file|mimes:png,jpg,jpeg|max:5120', //5MB
             'view' => 'integer',
             'question' => 'required|string'
         ];
@@ -39,6 +40,12 @@ class Question extends Model
             'vote.integer' => 'The total vote must be an integer.',
             'view.integer' => 'The total view must be an integer.',
 
+            'image.file' => 'The uploaded file must be a valid file.',
+            'image.mimes' => 'The image must be a file of type: png, jpg, jpeg.',
+            'image.max' => 'The image size must not exceed 5MB.',
+
+            'title.required' => 'The title field is required.',
+            'title.string' => 'The title must be a valid string.',
             'question.required' => 'The question field is required.',
             'question.string' => 'The question must be a valid string.',
         ];
