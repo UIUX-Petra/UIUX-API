@@ -9,6 +9,7 @@ use App\Http\Controllers\UserController;
 use Illuminate\Foundation\Auth\EmailVerificationRequest;
 use Illuminate\Http\Request;
 use App\Http\Controllers\RecommendationController;
+use App\Http\Controllers\SubjectController;
 
 // Route::get('/', function () {
 //     return view('welcome');
@@ -36,11 +37,13 @@ Route::apiResource('users', UserController::class);
 
 Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
-
+    
     Route::apiResource('answers', AnswerController::class);
-    Route::get('/answers/{question_id}', [AnswerController::class, 'getAnswerByQuestionId']);
+     
+    Route::apiResource('tags', SubjectController::class);
 
-    Route::post('/users/{id}/follow', [UserController::class, 'follow']);
+    Route::apiResource('users', UserController::class);
+    Route::post('/users/{email}/follow', [UserController::class, 'follow']);
     Route::get('/users/{user_id}', [UserController::class, 'getFollower']);
     Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
 

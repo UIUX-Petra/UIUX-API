@@ -10,27 +10,17 @@ class GroupQuestion extends Model
     //
     use HasUuids;
 
-    protected $fillable = ['type', 'subject_id'];
+    protected $table = 'subject_questions';
+
+    protected $fillable = ['question_id', 'subject_id'];
     protected $hidden = [
         'created_at',
         'updated_at'
     ];
 
-    public static function validationRules()
-    {
-        return ['type' => 'required|in:0,1,2,3'];
-    }
-    public static function validationMassages()
-    {
-        return [
-            'type.required' => 'The type field is required.',
-            'type.in' => 'The type field must be one of the following: 0, 1, 2, or 3.'
-        ];
-    }
-
     public function relations()
     {
-        return ['subject','question'];
+        return ['subject', 'question'];
     }
     public function subject()
     {
@@ -38,6 +28,6 @@ class GroupQuestion extends Model
     }
     public function question()
     {
-        return $this->hasMany(Question::class, 'group_question_id');
+        return $this->belongsTo(Question::class, 'question_id');
     }
 }

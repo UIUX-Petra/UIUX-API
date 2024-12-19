@@ -15,8 +15,6 @@ class Question extends Model
         'title',
         'image',
         'question',
-        'subject_id',
-        'group_question_id',
         'user_id'
     ];
 
@@ -31,6 +29,7 @@ class Question extends Model
             'vote' => 'integer',
             'title' => 'required|string',
             'image' => 'nullable|file|mimes:png,jpg,jpeg|max:5120', //5MB
+            'view' => 'integer',
             'question' => 'required|string'
         ];
     }
@@ -55,17 +54,11 @@ class Question extends Model
     public function relations()
     {
         return [
-            "subject",
             "answer",
             "comment",
             "user",
             "groupQuestion"
         ];
-    }
-
-    public function subject()
-    {
-        return $this->belongsTo(Subject::class, 'subject_id');
     }
 
     public function answer()
@@ -85,7 +78,7 @@ class Question extends Model
 
     public function groupQuestion()
     {
-        return $this->belongsTo(GroupQuestion::class, 'group_question_id');
+        return $this->hasMany(GroupQuestion::class, 'question_id');
     }
 
     public function votes()
@@ -93,7 +86,8 @@ class Question extends Model
         return $this->morphMany(Vote::class, 'votable');
     }
 
-    public function views(){
-        return $this->morphMany(View::class,'viewable');
+    public function views()
+    {
+        return $this->morphMany(View::class, 'viewable');
     }
 }
