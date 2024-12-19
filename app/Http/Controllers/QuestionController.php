@@ -51,7 +51,7 @@ class QuestionController extends BaseController
         return $this->success('Successfully retrieved data', $question);
     }
 
-    public function viewQuestion(Request $request, $id)
+    public function viewQuestion(Request $request, $id) //ini emang ga butuh login sih, tapi pas fetch comment, masih harus login
     {
         $question = $this->model::with(array_merge($this->model->relations(), ['comment.user', 'answer.user', 'answer.comment.user']))->findOrFail($id);
         $userId = $this->userController->getUserId($request->email);
