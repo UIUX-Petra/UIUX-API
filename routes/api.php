@@ -30,10 +30,12 @@ Route::post('/email/verification-notification', [AuthController::class, 'resendV
     ->name('verification.send')
     ->middleware(['auth', 'throttle:6,1']); 
 
-Route::get('/userWithRecommendation', [UserController::class, 'getUserWithRecommendation']);
+Route::get('/userWithRecommedation', [UserController::class, 'getUserWithRecommedation']);
+Route::apiResource('questions', QuestionController::class);
+Route::apiResource('comments', CommentController::class);
+Route::apiResource('users', UserController::class);
 
 Route::middleware(['auth:sanctum'])->group(function () {
-    Route::apiResource('questions', QuestionController::class);
     Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
     
     Route::apiResource('answers', AnswerController::class);
