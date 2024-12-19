@@ -24,8 +24,4 @@ class CommentController extends BaseController
         $request->request->remove('email');
         return parent::store($request);
     }
-    
-    public function store(Request $request){
-
-    }
 }

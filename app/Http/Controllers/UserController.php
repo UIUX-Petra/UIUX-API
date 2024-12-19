@@ -70,9 +70,9 @@ class UserController extends BaseController
     {
         $recommendations = [];
         $recommendedUserIds = [];
+        
         if ($request->has('email')) {
             $user = $this->model::where('email', $request->email)->first();
-
             if ($user) {
                 try {
                     $response = Http::get(env('PYTHON_API_URL') . '/recommend', [
@@ -90,6 +90,8 @@ class UserController extends BaseController
                 Log::info('Invalid email provided: ' . $request->email);
             }
         }
+        $users = $this->model->with($this->model->relations())->get();
+        $users = $users->makeVisible(['created_at']);
         $users = $this->model::orderBy('reputation', 'desc')->get();
         $result = $users->map(function ($user) use ($recommendations, $recommendedUserIds) {
             $isRecommended = in_array($user->id, $recommendedUserIds);
@@ -105,6 +107,8 @@ class UserController extends BaseController
                 'reputation' => $user->reputation,
                 'is_recommended' => $isRecommended,
                 'score' => $score,
+                'question' => $user->question,
+                'created_at' => $user->created_at,
             ];
         });
         $sortedResult = $result->sortByDesc(function ($user) {

@@ -41,7 +41,7 @@ class QuestionController extends BaseController
 
         $model = $this->model->create($data);
         $request->request->add( ['question_id'=> $model->id]);
-        $tagsQuestionids = $this->tagsQuestionController->store($request);
+        $this->tagsQuestionController->store($request);
         return $this->success('Data successfully saved to model', $model);
     }
 
