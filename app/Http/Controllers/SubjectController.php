@@ -11,4 +11,8 @@ class SubjectController extends BaseController
     {
         parent::__construct($model);
     }
+
+    public function tagOnly(){
+        return $this->model::all();
+    }
 }
