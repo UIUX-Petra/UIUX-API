@@ -81,7 +81,6 @@ class UserController extends BaseController
                     $response = Http::get(env('PYTHON_API_URL') . '/recommend', [
                         'user' => $user->id,
                     ]);
-
                     if ($response->successful()) {
                         $recommendations = $response->json()['data'] ?? [];
                         $recommendedUserIds = array_column($recommendations, 0);
@@ -117,6 +116,7 @@ class UserController extends BaseController
         $sortedResult = $result->sortByDesc(function ($user) {
             return [$user['is_recommended'], $user['reputation']];
         })->values();
+        Log::info($sortedResult);
         return $this->success('Data retrieved successfully.', $sortedResult);
     }
 
