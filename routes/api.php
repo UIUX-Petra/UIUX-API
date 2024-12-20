@@ -41,6 +41,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('answers', AnswerController::class);
      
     Route::apiResource('tags', SubjectController::class);
+    Route::get('/tagOnly', [SubjectController::class,'tagOnly']);
 
     Route::apiResource('comments', CommentController::class);
 
@@ -57,3 +58,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
 });
 Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
+
+Route::get('/getLeaderboardByTag', [UserController::class,'getLeaderboardByTag']);
