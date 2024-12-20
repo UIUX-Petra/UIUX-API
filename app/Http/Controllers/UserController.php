@@ -164,29 +164,33 @@ class UserController extends BaseController
         return $this->success('Successfully retrieved data', $followersUser);
     }
 
-    public function getLeaderboardByTag(Request $request)
+    public function getLeaderboardByTag($tagId)
     {
+        // $data = json_encode($request->all());
+
         try {
-            $validator = Validator::make($request->all(), [
-                'tag_id' => 'required|string',
-                'top_n' => 'nullable|integer|min:1'
-            ], [
-                'tag_id.required' => 'The tag_id field is required.',
-                'tag_id.string' => 'The tag_id must be a string.',
-                'top_n.integer' => 'The top_n must be a valid integer.',
-                'top_n.min' => 'The top_n must be at least 1.',
-            ]);
+            // $validator = Validator::make($data, [
+            //     'tag_id' => 'required|string',
+            //     'top_n' => 'nullable|integer|min:1'
+            // ], [
+            //     'tag_id.required' => 'The tag_id field is required.',
+            //     'tag_id.string' => 'The tag_id must be a string.',
+            //     'top_n.integer' => 'The top_n must be a valid integer.',
+            //     'top_n.min' => 'The top_n must be at least 1.',
+            // ]);
 
-            if ($validator->fails()) {
-                return $this->error('Invalid request data.', HttpResponseCode::HTTP_BAD_REQUEST, $validator->errors()->first());
-            }
+            // if ($validator->fails()) {
+            //     return $this->error('Invalid request data.', HttpResponseCode::HTTP_BAD_REQUEST, $validator->errors()->first());
+            // }
 
-            $validatedData = $validator->validated();
+            // $validatedData = $validator->validated();
 
-            $queryParams = ['tag' => $validatedData['tag_id']];
-            if (isset($validatedData['top_n'])) {
-                $queryParams['top_n'] = $validatedData['top_n'];
-            }
+            // $queryParams = ['tag' => $validatedData['tag_id']];
+            // if (isset($validatedData['top_n'])) {
+            $queryParams = ['tag' => $tagId];
+            // $queryParams['tag_id'] = 
+            $queryParams['top_n'] = 3;
+            // }
 
             $response = Http::get(env('PYTHON_API_URL') . '/leaderboard', $queryParams);
 
@@ -216,4 +220,25 @@ class UserController extends BaseController
             return $this->error('An error occurred while retrieving the leaderboard data.', [], 500);
         }
     }
+    public function getMostViewed($email, $top_n = 5)
+    {
+        $id = $this->model->getUserId($email);
+        $queryParams = http_build_query([
+            'user' => $id,
+            'top_n' => $top_n,
+        ]);
+    
+        $response = Http::get(env('PYTHON_API_URL') . '/top-viewed?' . $queryParams);
+    
+        // Decode JSON response
+        if ($response->successful()) {
+            return json_decode($response->body(), true);
+        } else {
+            return [
+                'success' => false,
+                'message' => 'Failed to retrieve top viewed data.',
+            ];
+        }
+    }
+    
 }

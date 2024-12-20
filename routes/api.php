@@ -58,4 +58,5 @@ Route::apiResource('users', UserController::class);
 // });
 Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
-Route::get('/getLeaderboardByTag', [UserController::class,'getLeaderboardByTag']);
+Route::get('/getLeaderboardByTag/{id}', [UserController::class,'getLeaderboardByTag']);
+Route::get('/getMostViewed/{$email}', [UserController::class,'getMostViewed']);

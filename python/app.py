@@ -1,23 +1,64 @@
-from mysql.connector import pooling
-import heapq
 from flask import Flask, request, jsonify
 import threading
+from mysql.connector import pooling, Error
 import time
+from datetime import datetime, timedelta
+import heapq
 
 app = Flask(__name__)
+
+# Jessica Chandra - c14230250
+class UserViewStat:
+    def __init__(self):
+        """
+        Data structure to store view statistics and last synced values:
+        - view_stats: {viewer_user_id: {owner_user_id: total_views}}
+        - last_synced_at: Timestamp of the last synchronization
+        """
+        self.view_stats = {}
+        self.last_synced_at = None
+        self.lock = threading.Lock()
+
+    def add_view(self, viewer_user_id, owner_user_id, total_views):
+        with self.lock:
+            if viewer_user_id not in self.view_stats:
+                self.view_stats[viewer_user_id] = {}
+
+            if owner_user_id not in self.view_stats[viewer_user_id]:
+                self.view_stats[viewer_user_id][owner_user_id] = total_views
+            else:
+                self.view_stats[viewer_user_id][owner_user_id] += total_views
+
+    def update_last_synced_at(self, timestamp):
+        with self.lock:
+            self.last_synced_at = timestamp
+
+    def get_last_synced_at(self):
+        with self.lock:
+            return self.last_synced_at
+
+    def get_top_viewed(self, viewer_user_id, top_n=5):
+        with self.lock:
+            if viewer_user_id not in self.view_stats:
+                return []
+            owner_views = self.view_stats[viewer_user_id]
+            sorted_views = sorted(owner_views.items(), key=lambda item: item[1], reverse=True)
+            return [{"owner_user_id": owner_id, "total_views": views} for owner_id, views in sorted_views[:top_n]]
+
+user_view_stat = UserViewStat()
+
 
 class User:
     def __init__(self, user_id):
         self.user_id = user_id
-        self.following = {}
+        self.following = {}  
 
     def follow(self, other_user, weight=1):
         self.following[other_user] = weight
 
-
 class Recommendation:
     def __init__(self):
-        self.nodes = {}
+        self.nodes = {} 
 
     def add_user(self, user_id):
         if user_id not in self.nodes:
@@ -40,8 +81,11 @@ class Recommendation:
                     score = direct_weight + second_weight
                     candidate_scores[second_degree_user] = candidate_scores.get(second_degree_user, 0) + score
         sorted_candidates = sorted(candidate_scores.items(), key=lambda x: (-x[1], x[0].user_id))
-        return [(candidate.user_id, score) for candidate, score in sorted_candidates[:top_n]]
-    
+        return [{"user_id": candidate.user_id, "score": score} for candidate, score in sorted_candidates[:top_n]]
+
+graph = Recommendation()
+
+
 class UserContribution:
     def __init__(self, user_id, contributions):
         self.user_id = user_id
@@ -52,8 +96,8 @@ class UserContribution:
 
 class Leaderboard:
     def __init__(self):
-        self.tag_leaderboards = {}
-        self.entry_map = {}
+        self.tag_leaderboards = {}  
+        self.entry_map = {}         
 
     def update_leaderboard(self, tag_id, user_id, contributions):
         if tag_id not in self.tag_leaderboards:
@@ -74,38 +118,86 @@ class Leaderboard:
             return []
 
         leaderboard = self.tag_leaderboards[tag_id]
+        top_entries = heapq.nsmallest(top_n, leaderboard)
         return [
             {"user_id": entry.user_id, "contributions": entry.contributions}
-            for entry in heapq.nsmallest(top_n, leaderboard)
+            for entry in top_entries
         ]
 
-graph = Recommendation()
 leaderboard = Leaderboard()
 
-last_processed_time = None
-last_processed_time_graph = None
-db_lock = threading.Lock()
 
 conn_pool = pooling.MySQLConnectionPool(
     pool_name="mypool",
     pool_size=10,
     host='127.0.0.1',
     user='root',
-    password='',
+    password='', 
     database='tekweb_project'
 )
 
+
 def fetch_from_db(query, params=None):
+    conn = None
     try:
         conn = conn_pool.get_connection()
-        with conn.cursor(dictionary=True) as cursor:
-            cursor.execute(query, params or ())
-            return cursor.fetchall()
-    except Exception as e:
+        cursor = conn.cursor(dictionary=True)
+        cursor.execute(query, params or ())
+        result = cursor.fetchall()
+        cursor.close()
+        return result
+    except Error as e:
         print(f"Database error: {e}")
         raise
     finally:
-        conn.close()
+        if conn and conn.is_connected():
+            conn.close()
+
+# Jessica C14230250 - c14230250
+def build_user_views_from_db():
+    query = """
+        SELECT v.user_id AS viewer_user_id,
+               q.user_id AS owner_user_id,
+               COUNT(*) AS new_total_views,
+               MAX(v.updated_at) AS last_updated
+        FROM views v
+        JOIN questions q ON v.viewable_id = q.id
+        WHERE v.updated_at > %s
+        GROUP BY v.user_id, q.user_id;
+    """
+    last_synced_at = user_view_stat.get_last_synced_at() or "1970-01-01 00:00:00"
+    print(f"[{datetime.now()}] Fetching data with last_synced_at: {last_synced_at}")
+    try:
+        rows = fetch_from_db(query, (last_synced_at,))
+    except Exception as e:
+        print(f"Error while fetching data from the database: {e}")
+        return
+
+    print(f"[{datetime.now()}] Fetched {len(rows)} rows from the database.")
+    for row in rows:
+        print(f"[{datetime.now()}] Updating viewer {row['viewer_user_id']} for owner {row['owner_user_id']} with {row['new_total_views']} new views.")
+        user_view_stat.add_view(row['viewer_user_id'], row['owner_user_id'], row['new_total_views'])
+
+    if rows:
+        max_last_updated = max(row['last_updated'] for row in rows)
+        buffered_last_synced_at = (max_last_updated + timedelta(seconds=1)).strftime('%Y-%m-%d %H:%M:%S')
+        user_view_stat.update_last_synced_at(buffered_last_synced_at)
+        print(f"[{datetime.now()}] Updated last_synced_at to: {buffered_last_synced_at}")
+    else:
+        print(f"[{datetime.now()}] No new data to sync.")
+
+    print(f"[{datetime.now()}] View stats synced with the database.")
+
+def periodic_data_refresh(interval=2):
+    while True:
+        print(f"[{datetime.now()}] Memperbarui data view_stats dari database...")
+        build_user_views_from_db()
+        print(f"[{datetime.now()}] Pembaharuan selesai.")
+        time.sleep(interval)
+
+
+last_processed_time_graph = None
+graph_lock = threading.Lock()
 
 def build_graph_from_db():
     global last_processed_time_graph
@@ -116,59 +208,32 @@ def build_graph_from_db():
         params = (last_processed_time_graph,)
     query += " ORDER BY created_at ASC"
 
-    rows = fetch_from_db(query, params)
+    try:
+        rows = fetch_from_db(query, params)
+    except Exception as e:
+        print(f"Error fetching follows from DB: {e}")
+        return
 
     for row in rows:
-        graph.add_follow(row['follower_id'], row['followed_id'])
+        follower_id = row['follower_id']
+        followed_id = row['followed_id']
+        graph.add_follow(follower_id, followed_id)
         last_processed_time_graph = row['created_at']
 
-def monitor_db():
+def monitor_recommendation_db(interval=2):
     while True:
         try:
             build_graph_from_db()
-            time.sleep(2)
+            time.sleep(interval)
         except Exception as e:
-            print(f"Error monitoring database: {e}")
+            print(f"Error monitoring recommendation database: {e}")
 
-@app.route('/recommend', methods=['GET'])
-def recommend_api():
-    try:
-        user_id = request.args.get('user')
-        
-        if not user_id:
-            return jsonify({
-                "code": 400,
-                "success": False,
-                "message": "User ID is required.",
-                "data": None
-            }), 400
 
-        if user_id not in graph.nodes:
-            return jsonify({
-                "code": 404,
-                "success": False,
-                "message": "User not found.",
-                "data": None
-            }), 404
+last_processed_time_leaderboard = None
+db_lock_leaderboard = threading.Lock()
 
-        recommendations = graph.recommend_users(user_id)
-        return jsonify({
-            "code": 200,
-            "success": True,
-            "message": "Recommendations retrieved successfully.",
-            "data": recommendations
-        })
-
-    except Exception as e:
-        return jsonify({
-            "code": 500,
-            "success": False,
-            "message": "An error occurred while processing the request.",
-            "error": str(e)
-        }), 500
-        
 def build_leaderboard_from_db():
-    global last_processed_time
+    global last_processed_time_leaderboard
     query = """
             SELECT 
                 contributions.user_id, 
@@ -199,10 +264,14 @@ def build_leaderboard_from_db():
             GROUP BY contributions.user_id, contributions.tag_id
             ORDER BY last_update ASC, total_contributions DESC;
     """
-    params = (last_processed_time, last_processed_time) if last_processed_time else (None, None)
-    rows = fetch_from_db(query, params)
+    params = (last_processed_time_leaderboard, last_processed_time_leaderboard) if last_processed_time_leaderboard else (None, None)
+    try:
+        rows = fetch_from_db(query, params)
+    except Exception as e:
+        print(f"Error fetching leaderboard data from DB: {e}")
+        return
 
-    with db_lock:
+    with db_lock_leaderboard:
         processed_tags = set()
         for row in rows:
             tag_id = row['tag_id']
@@ -213,28 +282,142 @@ def build_leaderboard_from_db():
                 processed_tags.add((tag_id, user_id))
         if rows:
             latest_update = max(row['last_update'] for row in rows)
-            last_processed_time = latest_update
+            last_processed_time_leaderboard = latest_update
 
-
-def monitor_leaderboard_db():
+def monitor_leaderboard_db(interval=2):
     while True:
         try:
             build_leaderboard_from_db()
-            time.sleep(2)
+            time.sleep(interval)
         except Exception as e:
             print(f"Error monitoring leaderboard database: {e}")
 
+# === Jessica lihat orang yang question-question nya paling sering dilihat oleh suatu user ===
+
+@app.route('/top-viewed', methods=['GET'])
+def top_viewed_api():
+    try:
+        user_id = request.args.get('user')
+        top_n_str = request.args.get('top_n', '5')
+
+        if not user_id:
+            return jsonify({
+                "code": 400,
+                "success": False,
+                "message": "User ID is required.",
+                "data": None
+            }), 400
+
+        if not top_n_str.isdigit():
+            return jsonify({
+                "code": 400,
+                "success": False,
+                "message": "'top_n' parameter must be a positive integer",
+                "data": None
+            }), 400
+
+        top_n = int(top_n_str)
+        if top_n <= 0:
+            return jsonify({
+                "code": 400,
+                "success": False,
+                "message": "'top_n' parameter must be greater than 0",
+                "data": None
+            }), 400
+
+        top_viewed = user_view_stat.get_top_viewed(user_id, top_n)
+        return jsonify({
+            "code": 200,
+            "success": True,
+            "message": "Top viewed users retrieved successfully.",
+            "data": top_viewed
+        }), 200
+
+    except Exception as e:
+        print(f"Error di endpoint /top-viewed: {e}")
+        return jsonify({
+            "code": 500,
+            "success": False,
+            "message": "An error occurred while processing the request.",
+            "error": str(e)
+        }), 500
+
+@app.route('/recommend', methods=['GET'])
+def recommend_api():
+    try:
+        user_id = request.args.get('user')
+        top_n_str = request.args.get('top_n', '5')
+
+        if not user_id:
+            return jsonify({
+                "code": 400,
+                "success": False,
+                "message": "User ID is required.",
+                "data": None
+            }), 400
+
+        if not top_n_str.isdigit():
+            return jsonify({
+                "code": 400,
+                "success": False,
+                "message": "'top_n' parameter must be a positive integer",
+                "data": None
+            }), 400
+
+        top_n = int(top_n_str)
+        if top_n <= 0:
+            return jsonify({
+                "code": 400,
+                "success": False,
+                "message": "'top_n' parameter must be greater than 0",
+                "data": None
+            }), 400
+
+        recommendations = graph.recommend_users(user_id, top_n)
+        return jsonify({
+            "code": 200,
+            "success": True,
+            "message": "Recommendations retrieved successfully.",
+            "data": recommendations
+        }), 200
+
+    except Exception as e:
+        print(f"Error di endpoint /recommend: {e}")
+        return jsonify({
+            "code": 500,
+            "success": False,
+            "message": "An error occurred while processing the request.",
+            "error": str(e)
+        }), 500
 
 @app.route('/leaderboard', methods=['GET'])
 def leaderboard_api():
     try:
         tag_id = request.args.get('tag')
-        top_n = int(request.args.get('top_n', 5))
+        top_n_str = request.args.get('top_n', '5')
+
         if not tag_id:
             return jsonify({
                 "code": 400,
                 "success": False,
                 "message": "Tag ID is required.",
+                "data": None
+            }), 400
+
+        if not top_n_str.isdigit():
+            return jsonify({
+                "code": 400,
+                "success": False,
+                "message": "'top_n' parameter must be a positive integer",
+                "data": None
+            }), 400
+
+        top_n = int(top_n_str)
+        if top_n <= 0:
+            return jsonify({
+                "code": 400,
+                "success": False,
+                "message": "'top_n' parameter must be greater than 0",
                 "data": None
             }), 400
 
@@ -244,9 +427,10 @@ def leaderboard_api():
             "success": True,
             "message": "Leaderboard retrieved successfully.",
             "data": top_contributors
-        })
-    
+        }), 200
+
     except Exception as e:
+        print(f"Error di endpoint /leaderboard: {e}")
         return jsonify({
             "code": 500,
             "success": False,
@@ -254,8 +438,17 @@ def leaderboard_api():
             "error": str(e)
         }), 500
 
+# === Main Function ===
 
 if __name__ == '__main__':
-    threading.Thread(target=monitor_db, daemon=True).start()
-    threading.Thread(target=monitor_leaderboard_db, daemon=True).start()
+    build_user_views_from_db()
+    build_graph_from_db()
+    build_leaderboard_from_db()
+
+    # Start background threads
+    threading.Thread(target=periodic_data_refresh, args=(2,), daemon=True).start()
+    threading.Thread(target=monitor_recommendation_db, args=(2,), daemon=True).start()
+    threading.Thread(target=monitor_leaderboard_db, args=(2,), daemon=True).start()
+
+    # Run Flask app
     app.run(debug=True, host='0.0.0.0')
