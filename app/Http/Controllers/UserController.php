@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Utils\HttpResponseCode;
 use Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
@@ -25,7 +27,8 @@ class UserController extends BaseController
         );
     }
 
-    public function index(){
+    public function index()
+    {
         $data = $this->model->with($this->model->relations())->get();
         $data = $data->makeVisible(['created_at']);
         return $this->success('Successfully retrieved data', $data);
@@ -70,9 +73,9 @@ class UserController extends BaseController
     {
         $recommendations = [];
         $recommendedUserIds = [];
+
         if ($request->has('email')) {
             $user = $this->model::where('email', $request->email)->first();
-
             if ($user) {
                 try {
                     $response = Http::get(env('PYTHON_API_URL') . '/recommend', [
@@ -90,6 +93,8 @@ class UserController extends BaseController
                 Log::info('Invalid email provided: ' . $request->email);
             }
         }
+        $users = $this->model->with($this->model->relations())->get();
+        $users = $users->makeVisible(['created_at']);
         $users = $this->model::orderBy('reputation', 'desc')->get();
         $result = $users->map(function ($user) use ($recommendations, $recommendedUserIds) {
             $isRecommended = in_array($user->id, $recommendedUserIds);
@@ -105,6 +110,8 @@ class UserController extends BaseController
                 'reputation' => $user->reputation,
                 'is_recommended' => $isRecommended,
                 'score' => $score,
+                'question' => $user->question,
+                'created_at' => $user->created_at,
             ];
         });
         $sortedResult = $result->sortByDesc(function ($user) {
@@ -155,5 +162,58 @@ class UserController extends BaseController
         $user = $this->model::find($id);
         $followersUser = $user->followers;
         return $this->success('Successfully retrieved data', $followersUser);
+    }
+
+    public function getLeaderboardByTag(Request $request)
+    {
+        try {
+            $validator = Validator::make($request->all(), [
+                'tag_id' => 'required|string',
+                'top_n' => 'nullable|integer|min:1'
+            ], [
+                'tag_id.required' => 'The tag_id field is required.',
+                'tag_id.string' => 'The tag_id must be a string.',
+                'top_n.integer' => 'The top_n must be a valid integer.',
+                'top_n.min' => 'The top_n must be at least 1.',
+            ]);
+
+            if ($validator->fails()) {
+                return $this->error('Invalid request data.', HttpResponseCode::HTTP_BAD_REQUEST, $validator->errors()->first());
+            }
+
+            $validatedData = $validator->validated();
+
+            $queryParams = ['tag' => $validatedData['tag_id']];
+            if (isset($validatedData['top_n'])) {
+                $queryParams['top_n'] = $validatedData['top_n'];
+            }
+
+            $response = Http::get(env('PYTHON_API_URL') . '/leaderboard', $queryParams);
+
+            if (!$response->successful()) {
+                return $this->error('Failed to fetch leaderboard data', [], 500);
+            }
+
+            $leaderboardData = $response->json()['data'] ?? [];
+            $userIds = collect($leaderboardData)->pluck('user_id');
+            $users = $this->model::whereIn('id', $userIds)->get()->keyBy('id');
+
+            $leaderboard = collect($leaderboardData)->map(function ($entry) use ($users) {
+                $user = $users->get($entry['user_id']);
+
+                return [
+                    'user_id' => $entry['user_id'],
+                    'contributions' => $entry['contributions'],
+                    'username' => $user?->username ?? 'Unknown User',
+                    'email' => $user?->email ?? 'Unknown Email',
+                ];
+            });
+
+            return $this->success('Successfully retrieved data', $leaderboard);
+
+        } catch (\Exception $e) {
+            Log::error('Failed to fetch leaderboard data: ' . $e->getMessage());
+            return $this->error('An error occurred while retrieving the leaderboard data.', [], 500);
+        }
     }
 }

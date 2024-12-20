@@ -30,7 +30,7 @@ Route::post('/email/verification-notification', [AuthController::class, 'resendV
     ->name('verification.send')
     ->middleware(['auth', 'throttle:6,1']); 
 
-Route::get('/userWithRecommedation', [UserController::class, 'getUserWithRecommedation']);
+Route::get('/userWithRecommendation', [UserController::class, 'getUserWithRecommendation']);
 Route::apiResource('questions', QuestionController::class);
 Route::apiResource('comments', CommentController::class);
 Route::apiResource('users', UserController::class);
@@ -56,3 +56,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
 });
 Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
+
+Route::get('/getLeaderboardByTag', [UserController::class,'getLeaderboardByTag']);

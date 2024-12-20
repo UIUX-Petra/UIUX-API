@@ -20,7 +20,7 @@ class GroupQuestionSeeder extends Seeder
 
         foreach (range(1, 50) as $index) {
             GroupQuestion::create([
-                'subject_id' => $tags[array_rand($tags)],
+                'tag_id' => $tags[array_rand($tags)],
                 'question_id' => $questions[array_rand($questions)],
                 'created_at' => now(),
                 'updated_at' => now(),

@@ -52,15 +52,15 @@ class UserContribution:
 
 class Leaderboard:
     def __init__(self):
-        self.subject_leaderboards = {}
+        self.tag_leaderboards = {}
         self.entry_map = {}
 
-    def update_leaderboard(self, subject_id, user_id, contributions):
-        if subject_id not in self.subject_leaderboards:
-            self.subject_leaderboards[subject_id] = []
-            self.entry_map[subject_id] = {}
-        leaderboard = self.subject_leaderboards[subject_id]
-        entry_map = self.entry_map[subject_id]
+    def update_leaderboard(self, tag_id, user_id, contributions):
+        if tag_id not in self.tag_leaderboards:
+            self.tag_leaderboards[tag_id] = []
+            self.entry_map[tag_id] = {}
+        leaderboard = self.tag_leaderboards[tag_id]
+        entry_map = self.entry_map[tag_id]
         if user_id in entry_map:
             entry_map[user_id].contributions = contributions
             heapq.heapify(leaderboard)
@@ -69,11 +69,11 @@ class Leaderboard:
             heapq.heappush(leaderboard, entry)
             entry_map[user_id] = entry
 
-    def get_top_contributors(self, subject_id, top_n):
-        if subject_id not in self.subject_leaderboards:
+    def get_top_contributors(self, tag_id, top_n):
+        if tag_id not in self.tag_leaderboards:
             return []
 
-        leaderboard = self.subject_leaderboards[subject_id]
+        leaderboard = self.tag_leaderboards[tag_id]
         return [
             {"user_id": entry.user_id, "contributions": entry.contributions}
             for entry in heapq.nsmallest(top_n, leaderboard)
@@ -170,52 +170,49 @@ def recommend_api():
 def build_leaderboard_from_db():
     global last_processed_time
     query = """
-        SELECT 
-            contributions.user_id, 
-            contributions.subject_id, 
-            SUM(contributions.total_contributions) AS total_contributions,
-            MAX(contributions.updated_at) AS last_update
-        FROM (
             SELECT 
-                q.user_id, 
-                q.subject_id, 
-                COUNT(*) AS total_contributions,
-                MAX(q.updated_at) AS updated_at
-            FROM questions q
-            GROUP BY q.user_id, q.subject_id
-            UNION ALL
-            SELECT 
-                a.user_id, 
-                q.subject_id, 
-                COUNT(*) AS total_contributions,
-                MAX(a.updated_at) AS updated_at
-            FROM answers a
-            JOIN questions q ON a.question_id = q.id
-            GROUP BY a.user_id, q.subject_id
-        ) AS contributions
-        WHERE (%s IS NULL OR contributions.updated_at > %s)
-        GROUP BY contributions.user_id, contributions.subject_id
-        ORDER BY contributions.updated_at ASC, total_contributions DESC
+                contributions.user_id, 
+                contributions.tag_id, 
+                SUM(contributions.total_contributions) AS total_contributions,
+                MAX(contributions.updated_at) AS last_update
+            FROM (
+                SELECT 
+                    q.user_id, 
+                    sq.tag_id, 
+                    COUNT(*) AS total_contributions,
+                    MAX(q.updated_at) AS updated_at
+                FROM questions q
+                JOIN subject_questions sq ON q.id = sq.question_id
+                GROUP BY q.user_id, sq.tag_id
+                UNION ALL
+                SELECT 
+                    a.user_id, 
+                    sq.tag_id, 
+                    COUNT(*) AS total_contributions,
+                    MAX(a.updated_at) AS updated_at
+                FROM answers a
+                JOIN questions q ON a.question_id = q.id
+                JOIN subject_questions sq ON q.id = sq.question_id
+                GROUP BY a.user_id, sq.tag_id
+            ) AS contributions
+            WHERE (%s IS NULL OR contributions.updated_at > %s)
+            GROUP BY contributions.user_id, contributions.tag_id
+            ORDER BY last_update ASC, total_contributions DESC;
     """
     params = (last_processed_time, last_processed_time) if last_processed_time else (None, None)
-    print(params)
     rows = fetch_from_db(query, params)
-    for row in rows:
-        print(row)
 
     with db_lock:
-        processed_subjects = set()
-        print(processed_subjects)
+        processed_tags = set()
         for row in rows:
-            subject_id = row['subject_id']
+            tag_id = row['tag_id']
             user_id = row['user_id']
             total_contributions = row['total_contributions']
-            if (subject_id, user_id) not in processed_subjects:
-                leaderboard.update_leaderboard(subject_id, user_id, total_contributions)
-                processed_subjects.add((subject_id, user_id))
+            if (tag_id, user_id) not in processed_tags:
+                leaderboard.update_leaderboard(tag_id, user_id, total_contributions)
+                processed_tags.add((tag_id, user_id))
         if rows:
             latest_update = max(row['last_update'] for row in rows)
-            print(f"Updating last_processed_time: {latest_update}")
             last_processed_time = latest_update
 
 
@@ -231,17 +228,17 @@ def monitor_leaderboard_db():
 @app.route('/leaderboard', methods=['GET'])
 def leaderboard_api():
     try:
-        subject_id = request.args.get('subject')
+        tag_id = request.args.get('tag')
         top_n = int(request.args.get('top_n', 5))
-        if not subject_id:
+        if not tag_id:
             return jsonify({
                 "code": 400,
                 "success": False,
-                "message": "Subject ID is required.",
+                "message": "Tag ID is required.",
                 "data": None
             }), 400
 
-        top_contributors = leaderboard.get_top_contributors(subject_id, top_n)
+        top_contributors = leaderboard.get_top_contributors(tag_id, top_n)
         return jsonify({
             "code": 200,
             "success": True,

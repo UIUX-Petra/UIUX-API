@@ -12,7 +12,7 @@ class GroupQuestion extends Model
 
     protected $table = 'subject_questions';
 
-    protected $fillable = ['question_id', 'subject_id'];
+    protected $fillable = ['question_id', 'tag_id'];
     protected $hidden = [
         'created_at',
         'updated_at'
@@ -24,7 +24,7 @@ class GroupQuestion extends Model
     }
     public function subject()
     {
-        return $this->belongsTo(subject::class, 'subject_id');
+        return $this->belongsTo(subject::class, 'tag_id');
     }
     public function question()
     {

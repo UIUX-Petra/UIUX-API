@@ -37,6 +37,7 @@ class AuthController extends BaseController
                 'name' => $user->username,
                 'email' => $user->email,
                 'token' => $userToken,
+                'reputation' => $user->reputation
             ]
         );
     }

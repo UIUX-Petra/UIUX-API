@@ -13,11 +13,11 @@ return new class extends Migration
     {
         Schema::create('subject_questions', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuid('subject_id');
+            $table->uuid('tag_id');
             $table->uuid('question_id');
             $table->timestamps();
 
-            $table->foreign('subject_id')->references('id')->on('tags')->onDelete('cascade');
+            $table->foreign('tag_id')->references('id')->on('tags')->onDelete('cascade');
             $table->foreign('question_id')->references('id')->on('questions')->onDelete('cascade');
         });
     }

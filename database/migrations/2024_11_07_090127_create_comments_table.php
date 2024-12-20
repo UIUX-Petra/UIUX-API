@@ -16,7 +16,7 @@ return new class extends Migration
             $table->uuid('user_id');
             $table->uuid('question_id')->nullable();
             $table->uuid('answer_id')->nullable();
-            $table->string('comment');
+            $table->text('comment');
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
