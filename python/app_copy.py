@@ -2,33 +2,33 @@ from flask import Flask, request, jsonify
 import threading
 from mysql.connector import pooling, Error
 import time
+from datetime import datetime, timedelta
 
 app = Flask(__name__)
 
 class UserViewStat:
     def __init__(self):
-        """
-        Struktur penyimpanan data pakai dictionary dengan hash table:
-        {
-            viewer_user_id: {
-                owner_user_id: total_views
-            }
-        }
-        """
         self.view_stats = {}
+        self.last_synced_at = None
         self.lock = threading.Lock()
 
     def add_view(self, viewer_user_id, owner_user_id, total_views):
         with self.lock:
             if viewer_user_id not in self.view_stats:
                 self.view_stats[viewer_user_id] = {}
-            if owner_user_id not in self.view_stats[viewer_user_id]:
-                self.view_stats[viewer_user_id][owner_user_id] = 0
-            self.view_stats[viewer_user_id][owner_user_id] += total_views
 
-    def reset_views(self):
+            if owner_user_id not in self.view_stats[viewer_user_id]:
+                self.view_stats[viewer_user_id][owner_user_id] = total_views
+            else:
+                self.view_stats[viewer_user_id][owner_user_id] += total_views
+
+    def update_last_synced_at(self, timestamp):
         with self.lock:
-            self.view_stats = {}
+            self.last_synced_at = timestamp
+
+    def get_last_synced_at(self):
+        with self.lock:
+            return self.last_synced_at
 
     def get_top_viewed(self, viewer_user_id, top_n=5):
         with self.lock:
@@ -68,27 +68,36 @@ def fetch_from_db(query, params=None):
 def build_user_views_from_db():
     query = """
         SELECT v.user_id AS viewer_user_id,
-               v.viewable_id AS question_id,
                q.user_id AS owner_user_id,
-               v.total AS total_views
+               COUNT(*) AS new_total_views,
+               MAX(v.updated_at) AS last_updated
         FROM views v
         JOIN questions q ON v.viewable_id = q.id
+        WHERE v.updated_at > %s
+        GROUP BY v.user_id, q.user_id;
     """
+    last_synced_at = user_view_stat.get_last_synced_at() or "1970-01-01 00:00:00"
+    print(f"[{datetime.now()}] Fetching data with last_synced_at: {last_synced_at}")
     try:
-        rows = fetch_from_db(query)
+        rows = fetch_from_db(query, (last_synced_at,))
     except Exception as e:
-        print(f"Gagal mengambil data dari database: {e}")
+        print(f"Error while fetching data from the database: {e}")
         return
 
-    user_view_stat.reset_views()
-
-    print(f"Memuat {len(rows)} baris data dari database...")
+    print(f"[{datetime.now()}] Fetched {len(rows)} rows from the database.")
     for row in rows:
-        viewer_user_id = row['viewer_user_id']
-        owner_user_id = row['owner_user_id']
-        total_views = row['total_views']
-        user_view_stat.add_view(viewer_user_id, owner_user_id, total_views)
-    print("Data view_stats berhasil dimuat ulang.")
+        print(f"[{datetime.now()}] Updating viewer {row['viewer_user_id']} for owner {row['owner_user_id']} with {row['new_total_views']} new views.")
+        user_view_stat.add_view(row['viewer_user_id'], row['owner_user_id'], row['new_total_views'])
+
+    if rows:
+        max_last_updated = max(row['last_updated'] for row in rows)
+        buffered_last_synced_at = (max_last_updated + timedelta(seconds=1)).strftime('%Y-%m-%d %H:%M:%S')
+        user_view_stat.update_last_synced_at(buffered_last_synced_at)
+        print(f"[{datetime.now()}] Updated last_synced_at to: {buffered_last_synced_at}")
+    else:
+        print(f"[{datetime.now()}] No new data to sync.")
+
+    print(f"[{datetime.now()}] View stats synced with the database.")
 
 @app.route('/top-viewed', methods=['GET'])
 def top_viewed_api():
@@ -138,15 +147,15 @@ def top_viewed_api():
             "error": str(e)
         }), 500
 
-def periodic_data_refresh(interval=300):
+def periodic_data_refresh(interval=2):
     while True:
-        print("Memperbarui data view_stats dari database...")
+        print(f"[{datetime.now()}] Memperbarui data view_stats dari database...")
         build_user_views_from_db()
-        print("Pembaharuan selesai.")
+        print(f"[{datetime.now()}] Pembaharuan selesai.")
         time.sleep(interval)
 
 if __name__ == '__main__':
     build_user_views_from_db()
-    refresh_thread = threading.Thread(target=periodic_data_refresh, args=(300,), daemon=True)
+    refresh_thread = threading.Thread(target=periodic_data_refresh, args=(2,), daemon=True)
     refresh_thread.start()
     app.run(debug=True, host='0.0.0.0')

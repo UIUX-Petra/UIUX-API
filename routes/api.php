@@ -35,7 +35,7 @@ Route::apiResource('questions', QuestionController::class);
 Route::apiResource('comments', CommentController::class);
 Route::apiResource('users', UserController::class);
 
-Route::middleware(['auth:sanctum'])->group(function () {
+// Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
     
     Route::apiResource('answers', AnswerController::class);
@@ -55,7 +55,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     
     Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
-});
+// });
 Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
 Route::get('/getLeaderboardByTag', [UserController::class,'getLeaderboardByTag']);
