@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use Http;
-use Illuminate\Support\Facades\Log;
+use App\Models\User;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\BaseController;
+use Illuminate\Support\Facades\Validator;
 
 class UserController extends BaseController
 {
@@ -25,7 +26,8 @@ class UserController extends BaseController
         );
     }
 
-    public function index(){
+    public function index()
+    {
         $data = $this->model->with($this->model->relations())->get();
         $data = $data->makeVisible(['created_at']);
         return $this->success('Successfully retrieved data', $data);
@@ -70,7 +72,7 @@ class UserController extends BaseController
     {
         $recommendations = [];
         $recommendedUserIds = [];
-        
+
         if ($request->has('email')) {
             $user = $this->model::where('email', $request->email)->first();
             if ($user) {
@@ -159,5 +161,31 @@ class UserController extends BaseController
         $user = $this->model::find($id);
         $followersUser = $user->followers;
         return $this->success('Successfully retrieved data', $followersUser);
+    }
+
+    public function editProfileUser(Request $request)
+    {
+        Log::info($request);
+        $user = $this->model::find($request->user_id);
+        
+        if (!$user) {
+            return response()->json(['message' => 'User not found'], 404);
+        }
+
+        if ($request->has('username') && $user->username !== $request->username) {
+            $user->username = $request->username;
+        }
+
+        if ($request->has('image')) {
+            $user->image = $request->image;
+        }
+        
+        if ($request->has('biodata')) {
+            $user->biodata = $request->biodata;
+        }
+
+        $user->save();
+
+        return response()->json(['message' => 'Profile updated successfully', 'user' => $user], 200);
     }
 }

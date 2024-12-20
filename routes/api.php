@@ -48,6 +48,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/users/{email}/follow', [UserController::class, 'follow']);
     Route::get('/users/{user_id}', [UserController::class, 'getFollower']);
     Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
+    Route::post('/users/editProfileDULU', [UserController::class, 'editProfileUser']);
 
     Route::post('questions/{id}/upvote', [QuestionController::class, 'upvoteQuestion']);
     Route::post('questions/{id}/downvote', [QuestionController::class, 'downvoteQuestion']);
