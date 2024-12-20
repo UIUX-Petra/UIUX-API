@@ -41,6 +41,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('answers', AnswerController::class);
      
     Route::apiResource('tags', SubjectController::class);
+    Route::get('/tagOnly', [SubjectController::class,'tagOnly']);
 
     Route::apiResource('comments', CommentController::class);
 
