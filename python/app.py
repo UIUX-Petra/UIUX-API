@@ -148,7 +148,6 @@ def fetch_from_db(query, params=None):
         if conn and conn.is_connected():
             conn.close()
 
-# Jessica Chandra - C14230250
 def build_user_views_from_db():
     query = """
         SELECT v.user_id AS viewer_user_id,
@@ -288,8 +287,6 @@ def monitor_leaderboard_db(interval=2):
             print(f"Error monitoring leaderboard database: {e}")
 
 
-# Jessica Chandra - C14230250 
-# == lihat orang yang question-question nya paling sering dilihat oleh suatu user ===
 @app.route('/top-viewed', methods=['GET'])
 def top_viewed_api():
     try:
@@ -433,8 +430,6 @@ def leaderboard_api():
             "message": "An error occurred while processing the request.",
             "error": str(e)
         }), 500
-
-# Main Function
 
 if __name__ == '__main__':
     build_user_views_from_db()
