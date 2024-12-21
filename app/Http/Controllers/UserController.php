@@ -247,27 +247,34 @@ class UserController extends BaseController
     public function getMostViewed($email)
     {
         $id = $this->getUserId($email);
-        $queryParams = ['user' => $id];
-        $queryParams['top_n'] = 1;
+        $queryParams = ['user' => $id, 'top_n' => 1];
 
-        $response = Http::get(env('PYTHON_API_URL') . '/top-viewed', $queryParams);
-        if ($response->successful()) {
-            $mostViewedData = $response->json()['data'][0] ?? [];
-            $mostViewed = $this->model::find($mostViewedData['owner_user_id']);
-            if ($mostViewed) {
-                $result = [
-                    'username' => $mostViewed->username,
-                    'email' => $mostViewed->email,
-                    'image' => $mostViewed->image,
-                ];
-                return $this->success('Successfully retrieved top viewed data', $result);
+        try {
+            $response = Http::get(env('PYTHON_API_URL') . '/top-viewed', $queryParams);
+            if ($response->successful()) {
+                $mostViewedData = $response->json()['data'][0] ?? null;
+                if ($mostViewedData && isset($mostViewedData['owner_user_id'])) {
+                    $mostViewed = $this->model::find($mostViewedData['owner_user_id']);
+                    if ($mostViewed) {
+                        $result = [
+                            'username' => $mostViewed->username,
+                            'email' => $mostViewed->email,
+                            'image' => $mostViewed->image,
+                        ];
+                        return $this->success('Successfully retrieved top viewed data', $result);
+                    } else {
+                        return $this->error('User associated with the top-viewed data was not found.');
+                    }
+                }
+                return $this->error('No top-viewed data found for the user.');
             } else {
-                return $this->error('User not found.');
+                return $this->error('Failed to retrieve top viewed data from the external service.');
             }
-        } else {
-            return $this->error('Failed to retrieve top viewed data.');
+        } catch (\Exception $e) {
+            return $this->error('An error occurred while retrieving top viewed data: ' . $e->getMessage());
         }
     }
+
 }
 
 
