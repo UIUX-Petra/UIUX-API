@@ -6,9 +6,6 @@ use App\Http\Controllers\CommentController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\UserController;
-use Illuminate\Foundation\Auth\EmailVerificationRequest;
-use Illuminate\Http\Request;
-use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\SubjectController;
 
 // Route::get('/', function () {
@@ -60,4 +57,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
-Route::get('/getLeaderboardByTag', [UserController::class,'getLeaderboardByTag']);
+Route::get('/getLeaderboardByTag/{id}', [UserController::class,'getLeaderboardByTag']);
+Route::get('/getMostViewed/{email}', [UserController::class,'getMostViewed']);

@@ -21,7 +21,7 @@ class UserSeeder extends Seeder
                 'username' => "User_$i",
                 'email' => "user$i@example.com",
                 'biodata' => null,
-                'password' => null,
+                'password' => \Illuminate\Support\Facades\Hash::make(12345678),
                 'reputation' => rand(0, 100),
                 'created_at' => now(),
                 'updated_at' => now(),

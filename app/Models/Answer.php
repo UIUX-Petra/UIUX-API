@@ -38,7 +38,6 @@ class Answer extends Model
 
             'answer.required' => 'The answer field is required.',
             'answer.string' => 'The answer must be a valid string.',
-
         ];
     }
 

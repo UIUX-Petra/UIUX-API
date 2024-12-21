@@ -72,6 +72,7 @@ class QuestionController extends BaseController
                     return [
                         'id' => $comment->id,
                         'username' => $comment->user->username,
+                        'user_email' => $comment->user->email,
                         'comment' => $comment->comment,
                     ];
                 }),

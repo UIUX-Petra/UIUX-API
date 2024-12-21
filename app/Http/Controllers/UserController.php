@@ -83,7 +83,7 @@ class UserController extends BaseController
                     ]);
                     if ($response->successful()) {
                         $recommendations = $response->json()['data'] ?? [];
-                        $recommendedUserIds = array_column($recommendations, 0);
+                        $recommendedUserIds = collect($recommendations)->pluck('user_id')->toArray();
                     }
                 } catch (\Exception $e) {
                     Log::error('Failed to connect to recommendation API: ' . $e->getMessage());
@@ -98,7 +98,7 @@ class UserController extends BaseController
         $result = $users->map(function ($user) use ($recommendations, $recommendedUserIds) {
             $isRecommended = in_array($user->id, $recommendedUserIds);
             $score = $isRecommended
-                ? collect($recommendations)->firstWhere(0, $user->id)[1]
+                ? collect($recommendations)->firstWhere('user_id', $user->id)['score']
                 : null;
             return [
                 'id' => $user->id,
@@ -116,7 +116,6 @@ class UserController extends BaseController
         $sortedResult = $result->sortByDesc(function ($user) {
             return [$user['is_recommended'], $user['reputation']];
         })->values();
-        Log::info($sortedResult);
         return $this->success('Data retrieved successfully.', $sortedResult);
     }
 
@@ -168,7 +167,7 @@ class UserController extends BaseController
     {
         Log::info($request);
         $user = $this->model::find($request->user_id);
-        
+
         if (!$user) {
             return response()->json(['message' => 'User not found'], 404);
         }
@@ -180,7 +179,7 @@ class UserController extends BaseController
         if ($request->has('image')) {
             $user->image = $request->image;
         }
-        
+
         if ($request->has('biodata')) {
             $user->biodata = $request->biodata;
         }
@@ -190,29 +189,33 @@ class UserController extends BaseController
         return response()->json(['message' => 'Profile updated successfully', 'user' => $user], 200);
     }
 
-    public function getLeaderboardByTag(Request $request)
+    public function getLeaderboardByTag($tagId)
     {
+        // $data = json_encode($request->all());
+
         try {
-            $validator = Validator::make($request->all(), [
-                'tag_id' => 'required|string',
-                'top_n' => 'nullable|integer|min:1'
-            ], [
-                'tag_id.required' => 'The tag_id field is required.',
-                'tag_id.string' => 'The tag_id must be a string.',
-                'top_n.integer' => 'The top_n must be a valid integer.',
-                'top_n.min' => 'The top_n must be at least 1.',
-            ]);
+            // $validator = Validator::make($data, [
+            //     'tag_id' => 'required|string',
+            //     'top_n' => 'nullable|integer|min:1'
+            // ], [
+            //     'tag_id.required' => 'The tag_id field is required.',
+            //     'tag_id.string' => 'The tag_id must be a string.',
+            //     'top_n.integer' => 'The top_n must be a valid integer.',
+            //     'top_n.min' => 'The top_n must be at least 1.',
+            // ]);
 
-            if ($validator->fails()) {
-                return $this->error('Invalid request data.', HttpResponseCode::HTTP_BAD_REQUEST, $validator->errors()->first());
-            }
+            // if ($validator->fails()) {
+            //     return $this->error('Invalid request data.', HttpResponseCode::HTTP_BAD_REQUEST, $validator->errors()->first());
+            // }
 
-            $validatedData = $validator->validated();
+            // $validatedData = $validator->validated();
 
-            $queryParams = ['tag' => $validatedData['tag_id']];
-            if (isset($validatedData['top_n'])) {
-                $queryParams['top_n'] = $validatedData['top_n'];
-            }
+            // $queryParams = ['tag' => $validatedData['tag_id']];
+            // if (isset($validatedData['top_n'])) {
+            $queryParams = ['tag' => $tagId];
+            // $queryParams['tag_id'] = 
+            $queryParams['top_n'] = 3;
+            // }
 
             $response = Http::get(env('PYTHON_API_URL') . '/leaderboard', $queryParams);
 
@@ -236,13 +239,35 @@ class UserController extends BaseController
             });
 
             return $this->success('Successfully retrieved data', $leaderboard);
-
         } catch (\Exception $e) {
             Log::error('Failed to fetch leaderboard data: ' . $e->getMessage());
             return $this->error('An error occurred while retrieving the leaderboard data.', [], 500);
         }
     }
+    public function getMostViewed($email)
+    {
+        $id = $this->getUserId($email);
+        $queryParams = ['user' => $id];
+        $queryParams['top_n'] = 1;
 
+        $response = Http::get(env('PYTHON_API_URL') . '/top-viewed', $queryParams);
+        if ($response->successful()) {
+            $mostViewedData = $response->json()['data'][0] ?? [];
+            $mostViewed = $this->model::find($mostViewedData['owner_user_id']);
+            if ($mostViewed) {
+                $result = [
+                    'username' => $mostViewed->username,
+                    'email' => $mostViewed->email,
+                    'image' => $mostViewed->image,
+                ];
+                return $this->success('Successfully retrieved top viewed data', $result);
+            } else {
+                return $this->error('User not found.');
+            }
+        } else {
+            return $this->error('Failed to retrieve top viewed data.');
+        }
+    }
 }
 
 
