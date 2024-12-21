@@ -214,31 +214,33 @@ class UserController extends BaseController
             });
 
             return $this->success('Successfully retrieved data', $leaderboard);
-
         } catch (\Exception $e) {
             Log::error('Failed to fetch leaderboard data: ' . $e->getMessage());
             return $this->error('An error occurred while retrieving the leaderboard data.', [], 500);
         }
     }
-    public function getMostViewed($email, $top_n = 5)
+    public function getMostViewed($email)
     {
-        $id = $this->model->getUserId($email);
-        $queryParams = http_build_query([
-            'user' => $id,
-            'top_n' => $top_n,
-        ]);
-    
-        $response = Http::get(env('PYTHON_API_URL') . '/top-viewed?' . $queryParams);
-    
-        // Decode JSON response
+        $id = $this->getUserId($email);
+        $queryParams = ['user' => $id];
+        $queryParams['top_n'] = 1;
+
+        $response = Http::get(env('PYTHON_API_URL') . '/top-viewed', $queryParams);
         if ($response->successful()) {
-            return json_decode($response->body(), true);
+            $data = $response['data'][0];
+            $mostViewed = $this->model::find($data['owner_user_id']);
+            if ($mostViewed) {
+                $result = [
+                    'username' => $mostViewed->username,
+                    'email' => $mostViewed->email,
+                    'image' => $mostViewed->image,
+                ];
+                return $this->success('Successfully retrieved top viewed data', $result);
+            } else {
+                return $this->error('User not found.');
+            }
         } else {
-            return [
-                'success' => false,
-                'message' => 'Failed to retrieve top viewed data.',
-            ];
+            return $this->error('Failed to retrieve top viewed data.');
         }
     }
-    
 }

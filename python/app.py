@@ -10,11 +10,6 @@ app = Flask(__name__)
 # Jessica Chandra - c14230250
 class UserViewStat:
     def __init__(self):
-        """
-        Data structure to store view statistics and last synced values:
-        - view_stats: {viewer_user_id: {owner_user_id: total_views}}
-        - last_synced_at: Timestamp of the last synchronization
-        """
         self.view_stats = {}
         self.last_synced_at = None
         self.lock = threading.Lock()
@@ -153,7 +148,7 @@ def fetch_from_db(query, params=None):
         if conn and conn.is_connected():
             conn.close()
 
-# Jessica C14230250 - c14230250
+# Jessica Chandra - C14230250
 def build_user_views_from_db():
     query = """
         SELECT v.user_id AS viewer_user_id,
@@ -292,8 +287,9 @@ def monitor_leaderboard_db(interval=2):
         except Exception as e:
             print(f"Error monitoring leaderboard database: {e}")
 
-# === Jessica lihat orang yang question-question nya paling sering dilihat oleh suatu user ===
 
+# Jessica Chandra - C14230250 
+# == lihat orang yang question-question nya paling sering dilihat oleh suatu user ===
 @app.route('/top-viewed', methods=['GET'])
 def top_viewed_api():
     try:
@@ -438,17 +434,15 @@ def leaderboard_api():
             "error": str(e)
         }), 500
 
-# === Main Function ===
+# Main Function
 
 if __name__ == '__main__':
     build_user_views_from_db()
     build_graph_from_db()
     build_leaderboard_from_db()
 
-    # Start background threads
     threading.Thread(target=periodic_data_refresh, args=(2,), daemon=True).start()
     threading.Thread(target=monitor_recommendation_db, args=(2,), daemon=True).start()
     threading.Thread(target=monitor_leaderboard_db, args=(2,), daemon=True).start()
 
-    # Run Flask app
     app.run(debug=True, host='0.0.0.0')
