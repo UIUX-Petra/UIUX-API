@@ -29,6 +29,7 @@ Route::post('/email/verification-notification', [AuthController::class, 'resendV
 
 Route::get('/userWithRecommendation', [UserController::class, 'getUserWithRecommendation']);
 Route::apiResource('questions', QuestionController::class);
+Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
 Route::apiResource('comments', CommentController::class);
 Route::apiResource('users', UserController::class);
 
@@ -46,11 +47,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/users/{email}/follow', [UserController::class, 'follow']);
     Route::get('/users/{user_id}', [UserController::class, 'getFollower']);
     Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
+    // Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
+    // getUserQuestionsWithCount 
     Route::post('/users/editProfileDULU', [UserController::class, 'editProfileUser']);
 
     Route::post('questions/{id}/upvote', [QuestionController::class, 'upvoteQuestion']);
     Route::post('questions/{id}/downvote', [QuestionController::class, 'downvoteQuestion']);
-    
     Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
 });

@@ -27,6 +27,9 @@ class BaseController extends Controller
         return $this->success('Successfully retrieved data', $this->model->with($this->model->relations())->get());
     }
 
+
+
+
     /**
      * Store a newly created resource in storage.
      */

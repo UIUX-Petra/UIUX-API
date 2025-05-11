@@ -4,18 +4,21 @@ namespace App\Http\Controllers;
 
 use Http;
 use App\Models\User;
+use App\Models\Question;
 use App\Utils\HttpResponseCode;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
+use App\Http\Controllers\QuestionController;
 use Illuminate\Support\Facades\Validator;
 
 class UserController extends BaseController
 {
-    public function __construct(User $user)
+    public function __construct(User $model)
     {
-        parent::__construct($user);
+        parent::__construct($model);
+
     }
     public function firstOrCreate($data)
     {
@@ -57,11 +60,13 @@ class UserController extends BaseController
         // Log the incoming email
         Log::info('Searching for user by email', ['email' => $email]);
 
-        $userDiCari = $this->model::where('email', $email)->with($this->model->relations())->get()->first();
+        $userDiCari = $this->model::where('email', $email)->with($this->model->relations())->first();
 
         // Log if the user was found or not
         if ($userDiCari) {
             Log::info('User found', ['user_id' => $userDiCari->id, 'email' => $email]);
+            $userId = $userDiCari->id;
+            // $userQuestionCount = $this->questionController->getUserQuestionsWithCount($userId);
         } else {
             Log::warning('User not found', ['email' => $email]);
         }

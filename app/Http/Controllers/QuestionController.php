@@ -24,6 +24,46 @@ class QuestionController extends BaseController
         $this->tagsQuestionController = new GroupQuestionController(new GroupQuestion());
     }
 
+    public function getUserQuestionsWithCount($userId) 
+    {
+        $questions = $this->model->where('user_id', $userId)
+                                       ->orderBy('created_at', 'desc') 
+                                       ->get();
+
+        // $count = $questions->count();
+
+        return $this->success('Successfully retrieved data', $questions);
+    }
+
+    // Fungsi getCountUserQuestions yang hanya mengembalikan jumlah masih bisa dipertahankan jika dibutuhkan terpisah
+    // public function getCountUserQuestions($userId)
+    // {
+    //     Log::info('countUserQuestions', ['countUserQuestions' => $this->model->where('user_id', $userId)->count()]);
+    //     return $this->model->where('user_id', $userId)->count();
+    // }
+    
+
+    public function getQuestionPaginated(Request $request) 
+    {
+        $perPage = $request->input('per_page', 10); 
+        $data = $this->model->with($this->model->relations())
+                            // ->withCount('comment')
+                            ->orderBy('created_at', 'desc') 
+                            ->paginate($perPage);
+
+        if (!$data->isEmpty() && !isset($data->first()->comment_count)) { // Cek jika comment_count belum ada
+            $data->getCollection()->transform(function ($item) {
+                $item->comments_count = (isset($item->comment) && is_array($item->comment))
+                                      ? count($item->comment)
+                                      : 0;
+                return $item;
+            });
+        }
+
+        return $this->success('Successfully retrieved data', $data);
+    }
+
+   
     public function store(Request $request)
     {
         $userId = $this->userController->getUserId($request->email);
