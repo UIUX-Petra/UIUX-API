@@ -30,6 +30,7 @@ Route::post('/email/verification-notification', [AuthController::class, 'resendV
 Route::get('/userWithRecommendation', [UserController::class, 'getUserWithRecommendation']);
 Route::apiResource('questions', QuestionController::class);
 Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
+Route::get('/user-questions/{userId}', [QuestionController::class, 'getUserQuestionsWithCount']);
 Route::apiResource('comments', CommentController::class);
 Route::apiResource('users', UserController::class);
 
