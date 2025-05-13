@@ -21,29 +21,30 @@ Route::post('/manualLogin', [AuthController::class, 'manualLogin']);
 
 Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
     ->name('verification.verify')
-    ->middleware('signed'); 
+    ->middleware('signed');
 
 Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail'])
     ->name('verification.send')
-    ->middleware(['auth', 'throttle:6,1']); 
+    ->middleware(['auth', 'throttle:6,1']);
 
 Route::get('/userWithRecommendation', [UserController::class, 'getUserWithRecommendation']);
-Route::apiResource('questions', QuestionController::class);
-Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
 Route::get('/user-questions/{userId}', [QuestionController::class, 'getUserQuestionsWithCount']);
-Route::post('/saveQuestion/{userId}/{questionId}', [UserController::class, 'saveQuestion']);
-Route::get('/unsaveQuestion/{userId}/{questionId}', [UserController::class, 'unsaveQuestion']);
-Route::get('/getSavedQuestions/{userId}', [UserController::class, 'getSavedQuestions']);
 Route::apiResource('comments', CommentController::class);
 Route::apiResource('users', UserController::class);
 
 Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/saveQuestion/{userId}/{questionId}', [UserController::class, 'saveQuestion']);
+    Route::post('/unsaveQuestion/{userId}/{questionId}', [UserController::class, 'unsaveQuestion']);
+    Route::get('/getSavedQuestions/{userId}', [UserController::class, 'getSavedQuestions']);
     Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
-    
+
+    // Route::apiResource('questions', QuestionController::class); dah gakepake
+    Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
+
     Route::apiResource('answers', AnswerController::class);
-     
+
     Route::apiResource('tags', SubjectController::class);
-    Route::get('/tagOnly', [SubjectController::class,'tagOnly']);
+    Route::get('/tagOnly', [SubjectController::class, 'tagOnly']);
 
     Route::apiResource('comments', CommentController::class);
 
@@ -63,5 +64,5 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
 Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
-Route::get('/getLeaderboardByTag/{id}', [UserController::class,'getLeaderboardByTag']);
-Route::get('/getMostViewed/{email}', [UserController::class,'getMostViewed']);
+Route::get('/getLeaderboardByTag/{id}', [UserController::class, 'getLeaderboardByTag']);
+Route::get('/getMostViewed/{email}', [UserController::class, 'getMostViewed']);

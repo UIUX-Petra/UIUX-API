@@ -15,11 +15,11 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends BaseController
 {
-    protected $questionController;
+    // protected $questionController;
     public function __construct(User $model)
     {
         parent::__construct($model);
-        $this->questionController = new QuestionController(new Question());
+        // $this->questionController = new QuestionController(new Question());
     }
     public function firstOrCreate($data)
     {
@@ -284,7 +284,7 @@ class UserController extends BaseController
     public function saveQuestion($userId, $questionId)
     {
         $user = $this->model::find($userId);
-        $question = $this->questionController->getQuestion($questionId);
+        $question = Question::findOrFail($questionId);
 
         if (!$user || !$question) {
             return $this->error('User or question not found', [], HttpResponseCode::HTTP_NOT_FOUND);
@@ -301,9 +301,9 @@ class UserController extends BaseController
     
     public function unsaveQuestion($userId, $questionId)
     {
+        Log::info($userId);
         $user = $this->model::find($userId);
-        $question = $this->questionController->getQuestion($questionId);
-
+        $question = Question::findOrFail($questionId);
         if (!$user || !$question) {
             return $this->error('User or question not found', [], HttpResponseCode::HTTP_NOT_FOUND);
         }
@@ -325,7 +325,7 @@ class UserController extends BaseController
             return $this->error('User not found', [], HttpResponseCode::HTTP_NOT_FOUND);
         }
 
-        $savedQuestions = $user->savedQuestions()->with($this->questionController->model->relations())->get();
+        $savedQuestions = $user->savedQuestions()->get();
 
         return $this->success('Successfully retrieved saved questions', $savedQuestions, HttpResponseCode::HTTP_OK);
     }

@@ -165,8 +165,4 @@ class QuestionController extends BaseController
             return $this->error($e->getMessage());
         }
     }
-    public function getQuestion($questionId)
-    {
-        return $this->model::findOrFail($questionId);
-    }
 }

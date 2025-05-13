@@ -88,7 +88,7 @@ class Question extends Model
 
     public function savedByUsers()
     {
-        return $this->belongsToMany(User::class, 'question_user', 'question_id', 'user_id')
+        return $this->belongsToMany(User::class, 'saved_questions', 'question_id', 'user_id')
                     ->withTimestamps();
     }
 }
