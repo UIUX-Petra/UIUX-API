@@ -85,4 +85,10 @@ class Question extends Model
     {
         return $this->morphMany(View::class, 'viewable');
     }
+
+    public function savedByUsers()
+    {
+        return $this->belongsToMany(User::class, 'question_user', 'question_id', 'user_id')
+                    ->withTimestamps();
+    }
 }

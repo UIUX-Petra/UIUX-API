@@ -31,6 +31,9 @@ Route::get('/userWithRecommendation', [UserController::class, 'getUserWithRecomm
 Route::apiResource('questions', QuestionController::class);
 Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
 Route::get('/user-questions/{userId}', [QuestionController::class, 'getUserQuestionsWithCount']);
+Route::post('/saveQuestion/{userId}/{questionId}', [UserController::class, 'saveQuestion']);
+Route::get('/unsaveQuestion/{userId}/{questionId}', [UserController::class, 'unsaveQuestion']);
+Route::get('/getSavedQuestions/{userId}', [UserController::class, 'getSavedQuestions']);
 Route::apiResource('comments', CommentController::class);
 Route::apiResource('users', UserController::class);
 

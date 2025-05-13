@@ -51,7 +51,7 @@ class QuestionController extends BaseController
                             ->orderBy('created_at', 'desc') 
                             ->paginate($perPage);
 
-        if (!$data->isEmpty() && !isset($data->first()->comment_count)) { // Cek jika comment_count belum ada
+        if (!$data->isEmpty() && !isset($data->first()->comment_count)) {
             $data->getCollection()->transform(function ($item) {
                 $item->comments_count = (isset($item->comment) && is_array($item->comment))
                                       ? count($item->comment)
@@ -165,5 +165,8 @@ class QuestionController extends BaseController
             return $this->error($e->getMessage());
         }
     }
-
+    public function getQuestion($questionId)
+    {
+        return $this->model::findOrFail($questionId);
+    }
 }

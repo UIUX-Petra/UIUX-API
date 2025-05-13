@@ -15,10 +15,11 @@ use Illuminate\Support\Facades\Validator;
 
 class UserController extends BaseController
 {
+    protected $questionController;
     public function __construct(User $model)
     {
         parent::__construct($model);
-
+        $this->questionController = new QuestionController(new Question());
     }
     public function firstOrCreate($data)
     {
@@ -280,6 +281,54 @@ class UserController extends BaseController
         }
     }
 
+    public function saveQuestion($userId, $questionId)
+    {
+        $user = $this->model::find($userId);
+        $question = $this->questionController->getQuestion($questionId);
+
+        if (!$user || !$question) {
+            return $this->error('User or question not found', [], HttpResponseCode::HTTP_NOT_FOUND);
+        }
+
+        if ($user->savedQuestions()->where('question_id', $questionId)->exists()) {
+            return $this->error('Question already saved', [], HttpResponseCode::HTTP_BAD_REQUEST);
+        }
+
+        $user->savedQuestions()->attach($questionId);
+
+        return $this->success('Question saved successfully', [], HttpResponseCode::HTTP_OK);
+    }
+    
+    public function unsaveQuestion($userId, $questionId)
+    {
+        $user = $this->model::find($userId);
+        $question = $this->questionController->getQuestion($questionId);
+
+        if (!$user || !$question) {
+            return $this->error('User or question not found', [], HttpResponseCode::HTTP_NOT_FOUND);
+        }
+
+        if (!$user->savedQuestions()->where('question_id', $questionId)->exists()) {
+            return $this->error('Question not saved yet', [], HttpResponseCode::HTTP_BAD_REQUEST);
+        }
+
+        $user->savedQuestions()->detach($questionId);
+
+        return $this->success('Question unsaved successfully', [], HttpResponseCode::HTTP_OK);
+    }
+
+    public function getSavedQuestions($userId)
+    {
+        $user = $this->model::find($userId);
+
+        if (!$user) {
+            return $this->error('User not found', [], HttpResponseCode::HTTP_NOT_FOUND);
+        }
+
+        $savedQuestions = $user->savedQuestions()->with($this->questionController->model->relations())->get();
+
+        return $this->success('Successfully retrieved saved questions', $savedQuestions, HttpResponseCode::HTTP_OK);
+    }
 }
 
 
