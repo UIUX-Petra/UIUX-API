@@ -43,19 +43,40 @@ class QuestionController extends BaseController
     // }
     
 
-    public function getQuestionPaginated(Request $request) 
+    public function getQuestionPaginated(Request $request)
     {
-        $perPage = $request->input('per_page', 10); 
-        $data = $this->model->with($this->model->relations())
-                            // ->withCount('comment')
-                            ->orderBy('created_at', 'desc') 
-                            ->paginate($perPage);
+        $perPage = $request->input('per_page', 10);
+        $userEmail = $request->input('email');
 
-        if (!$data->isEmpty() && !isset($data->first()->comment_count)) {
-            $data->getCollection()->transform(function ($item) {
-                $item->comments_count = (isset($item->comment) && is_array($item->comment))
-                                      ? count($item->comment)
-                                      : 0;
+        $requestUser = null;
+        if ($userEmail) {
+            $requestUser = User::where('email', $userEmail)->first();
+        }
+
+        $query = $this->model->with($this->model->getDefaultRelations())
+                     ->withCount([
+                         'comment as comments_count',
+                         'votes as vote_count',
+                         'views as view_count'
+                     ])
+                     ->orderBy('created_at', 'desc');
+
+        if ($requestUser) {
+            $query->withExists(['savedByUsers as is_saved_by_request_user' => function ($subQuery) use ($requestUser) {
+                $subQuery->where('saved_questions.user_id', $requestUser->id);
+            }]);
+        }
+
+        $data = $query->paginate($perPage);
+
+        if (!$requestUser || $data->isNotEmpty()) {
+            $data->getCollection()->transform(function ($item) use ($requestUser) {
+                if (!$requestUser) {
+                    $item->is_saved_by_request_user = false;
+                } else {
+                    $item->is_saved_by_request_user = (bool) $item->is_saved_by_request_user;
+                }
+                
                 return $item;
             });
         }

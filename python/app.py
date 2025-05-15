@@ -127,7 +127,7 @@ conn_pool = pooling.MySQLConnectionPool(
     host='127.0.0.1',
     user='root',
     password='', 
-    database='tekweb_project'
+    database='uiux_project'
 )
 
 

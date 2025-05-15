@@ -33,12 +33,12 @@ Route::apiResource('comments', CommentController::class);
 Route::apiResource('users', UserController::class);
 
 Route::middleware(['auth:sanctum'])->group(function () {
-    Route::post('/saveQuestion/{userId}/{questionId}', [UserController::class, 'saveQuestion']);
-    Route::post('/unsaveQuestion/{userId}/{questionId}', [UserController::class, 'unsaveQuestion']);
-    Route::get('/getSavedQuestions/{userId}', [UserController::class, 'getSavedQuestions']);
+    Route::post('/saveQuestion/{email}/{questionId}', [UserController::class, 'saveQuestion']);
+    Route::post('/unsaveQuestion/{email}/{questionId}', [UserController::class, 'unsaveQuestion']);
+    Route::get('/getSavedQuestions/{email}', [UserController::class, 'getSavedQuestions']);
     Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
 
-    // Route::apiResource('questions', QuestionController::class); dah gakepake
+    Route::apiResource('questions', QuestionController::class); //dah gakepake
     Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
 
     Route::apiResource('answers', AnswerController::class);
@@ -52,7 +52,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/users/{email}/follow', [UserController::class, 'follow']);
     Route::get('/users/{user_id}', [UserController::class, 'getFollower']);
     Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
-    // Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
+
     // getUserQuestionsWithCount 
     Route::post('/users/editProfileDULU', [UserController::class, 'editProfileUser']);
 

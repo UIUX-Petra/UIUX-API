@@ -52,7 +52,18 @@ class Question extends Model
             "answer",
             "comment",
             "user",
-            "groupQuestion"
+            "groupQuestion",
+            "savedByUsers"
+        ];
+    }
+
+     public function getDefaultRelations()
+    {
+        return [
+            "answer",
+            // "comment",
+            "user",
+            "groupQuestion.subject",
         ];
     }
 

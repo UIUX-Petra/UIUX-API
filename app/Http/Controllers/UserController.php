@@ -58,16 +58,12 @@ class UserController extends BaseController
 
     public function getByEmail(string $email)
     {
-        // Log the incoming email
         Log::info('Searching for user by email', ['email' => $email]);
 
         $userDiCari = $this->model::where('email', $email)->with($this->model->relations())->first();
 
-        // Log if the user was found or not
         if ($userDiCari) {
             Log::info('User found', ['user_id' => $userDiCari->id, 'email' => $email]);
-            $userId = $userDiCari->id;
-            // $userQuestionCount = $this->questionController->getUserQuestionsWithCount($userId);
         } else {
             Log::warning('User not found', ['email' => $email]);
         }
@@ -281,9 +277,9 @@ class UserController extends BaseController
         }
     }
 
-    public function saveQuestion($userId, $questionId)
+    public function saveQuestion($email, $questionId)
     {
-        $user = $this->model::find($userId);
+        $user = $this->model::where('email', $email)->get()->first();
         $question = Question::findOrFail($questionId);
 
         if (!$user || !$question) {
@@ -299,10 +295,9 @@ class UserController extends BaseController
         return $this->success('Question saved successfully', [], HttpResponseCode::HTTP_OK);
     }
     
-    public function unsaveQuestion($userId, $questionId)
+    public function unsaveQuestion($email, $questionId)
     {
-        Log::info($userId);
-        $user = $this->model::find($userId);
+        $user = $this->model::where('email', $email)->get()->first();
         $question = Question::findOrFail($questionId);
         if (!$user || !$question) {
             return $this->error('User or question not found', [], HttpResponseCode::HTTP_NOT_FOUND);
@@ -317,9 +312,9 @@ class UserController extends BaseController
         return $this->success('Question unsaved successfully', [], HttpResponseCode::HTTP_OK);
     }
 
-    public function getSavedQuestions($userId)
+    public function getSavedQuestions($email)
     {
-        $user = $this->model::find($userId);
+        $user = $this->model::where('email', $email)->get()->first();
 
         if (!$user) {
             return $this->error('User not found', [], HttpResponseCode::HTTP_NOT_FOUND);
