@@ -191,6 +191,31 @@ class UserController extends BaseController
         return response()->json(['message' => 'Profile updated successfully', 'user' => $user], 200);
     }
 
+    // buat hitung satu user punya berapa post dengan suatu tag
+    public function getUserTags(Request $request)
+    {
+        Log::info('Fetching user tags for email: ' . $request->email);
+        try {
+            $currUser = $this->model::where('email', $request->email)
+                ->with([
+                    'question.groupQuestion.subject', 
+                ])
+                ->first();
+
+            if ($currUser) {
+                Log::info('Successfully retrieved user data for email: ' . $request->email);
+                return $this->success('Successfully retrieved data', $currUser);
+            } else {
+                Log::warning('User not found for email: ' . $request->email);
+                return $this->error('User not found');
+            }
+        } catch (\Exception $e) {
+            Log::error('Error fetching user data for email: ' . $request->email . ' - ' . $e->getMessage());
+            return $this->error('An error occurred while processing your request.');
+        }
+    }
+
+
     public function getLeaderboardByTag($tagId)
     {
         // $data = json_encode($request->all());
@@ -294,7 +319,7 @@ class UserController extends BaseController
 
         return $this->success('Question saved successfully', [], HttpResponseCode::HTTP_OK);
     }
-    
+
     public function unsaveQuestion($email, $questionId)
     {
         $user = $this->model::where('email', $email)->get()->first();
@@ -325,5 +350,3 @@ class UserController extends BaseController
         return $this->success('Successfully retrieved saved questions', $savedQuestions, HttpResponseCode::HTTP_OK);
     }
 }
-
-

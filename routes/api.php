@@ -37,7 +37,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/unsaveQuestion/{email}/{questionId}', [UserController::class, 'unsaveQuestion']);
     Route::get('/getSavedQuestions/{email}', [UserController::class, 'getSavedQuestions']);
     Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
-
     Route::apiResource('questions', QuestionController::class); //dah gakepake
     Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
 
@@ -52,6 +51,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/users/{email}/follow', [UserController::class, 'follow']);
     Route::get('/users/{user_id}', [UserController::class, 'getFollower']);
     Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
+    Route::get('/userTags', [UserController::class, 'getUserTags']);
+
+    
 
     // getUserQuestionsWithCount 
     Route::post('/users/editProfileDULU', [UserController::class, 'editProfileUser']);

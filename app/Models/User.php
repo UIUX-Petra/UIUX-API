@@ -77,8 +77,10 @@ class User extends Authenticatable implements MustVerifyEmail
         return [
             'userAchievement',
             'answer',
-            'comment',
-            'question',
+            'answer.question.groupQuestion.subject',
+            // 'question.comment',
+            'question.comment',
+            'question.groupQuestion.subject',
             'following',
             'followers'
         ];

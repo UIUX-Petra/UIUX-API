@@ -24,24 +24,17 @@ class QuestionController extends BaseController
         $this->tagsQuestionController = new GroupQuestionController(new GroupQuestion());
     }
 
-    public function getUserQuestionsWithCount($userId) 
+    public function getUserQuestionsWithCount($userId)
     {
         $questions = $this->model->where('user_id', $userId)
-                                       ->orderBy('created_at', 'desc') 
-                                       ->get();
+            ->orderBy('created_at', 'desc')
+            ->get();
 
         // $count = $questions->count();
 
         return $this->success('Successfully retrieved data', $questions);
     }
 
-    // Fungsi getCountUserQuestions yang hanya mengembalikan jumlah masih bisa dipertahankan jika dibutuhkan terpisah
-    // public function getCountUserQuestions($userId)
-    // {
-    //     Log::info('countUserQuestions', ['countUserQuestions' => $this->model->where('user_id', $userId)->count()]);
-    //     return $this->model->where('user_id', $userId)->count();
-    // }
-    
 
     public function getQuestionPaginated(Request $request)
     {
@@ -54,12 +47,12 @@ class QuestionController extends BaseController
         }
 
         $query = $this->model->with($this->model->getDefaultRelations())
-                     ->withCount([
-                         'comment as comments_count',
-                         'votes as vote_count',
-                         'views as view_count'
-                     ])
-                     ->orderBy('created_at', 'desc');
+            ->withCount([
+                'comment as comments_count',
+                'votes as vote_count',
+                'views as view_count'
+            ])
+            ->orderBy('created_at', 'desc');
 
         if ($requestUser) {
             $query->withExists(['savedByUsers as is_saved_by_request_user' => function ($subQuery) use ($requestUser) {
@@ -76,7 +69,7 @@ class QuestionController extends BaseController
                 } else {
                     $item->is_saved_by_request_user = (bool) $item->is_saved_by_request_user;
                 }
-                
+
                 return $item;
             });
         }
@@ -84,7 +77,7 @@ class QuestionController extends BaseController
         return $this->success('Successfully retrieved data', $data);
     }
 
-   
+
     public function store(Request $request)
     {
         $userId = $this->userController->getUserId($request->email);
@@ -101,7 +94,7 @@ class QuestionController extends BaseController
         }
 
         $model = $this->model->create($data);
-        $request->request->add( ['question_id'=> $model->id]);
+        $request->request->add(['question_id' => $model->id]);
         $this->tagsQuestionController->store($request);
         return $this->success('Data successfully saved to model', $model);
     }
@@ -129,6 +122,7 @@ class QuestionController extends BaseController
                 'image' => $answer->image,
                 'answer' => $answer->answer,
                 'vote' => $answer->vote,
+                'timestamp' => $answer->created_at,
                 'comments' => $answer->comment->map(function ($comment) {
                     return [
                         'id' => $comment->id,
@@ -144,8 +138,12 @@ class QuestionController extends BaseController
                 'id' => $comment->id,
                 'username' => $comment->user->username,
                 'comment' => $comment->comment,
+                'timestamp' => $comment->created_at,
+
             ];
         });
+
+        $question->timestamp = $question->created_at;
         $question->setRelation('answer', $answers);
         $question->setRelation('comment', $comment);
         try {
