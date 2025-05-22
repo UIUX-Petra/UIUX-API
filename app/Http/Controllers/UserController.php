@@ -145,8 +145,25 @@ class UserController extends BaseController
         }
         $mauDiFolo = $mauDiFolo->load(['following', 'followers']);
 
+        $userRelation = 0; // tak ada relasi (asing bjir)
+        foreach ($mauDiFolo['followers'] as $follower) {
+            if ($follower['id'] == $currUser['id']) {
+                $userRelation = 1; // aku follow dirinya -> btn bertuliskan following
+                break;
+            }
+        }
+
+        if ($userRelation === 0) { // jika habis di cek, trnyt ak ga folo dia, cek apakah dia folo ak -> btn bertuliskan follow back
+            foreach ($mauDiFolo['following'] as $following) {
+                if ($following['id'] == $currUser['id']) {
+                    $userRelation = 2;
+                    break;
+                }
+            }
+        }
+
         return $this->success('Successfully retrieved data', [
-            'user' => $currUser->load(['following', 'followers']),
+            'userRelation' => $userRelation,
             'countFollowers' => count($mauDiFolo['followers'])
         ]);
     }
