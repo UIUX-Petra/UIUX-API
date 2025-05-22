@@ -198,7 +198,7 @@ class UserController extends BaseController
         try {
             $currUser = $this->model::where('email', $request->email)
                 ->with([
-                    'question.groupQuestion.subject', 
+                    'question.groupQuestion.subject',
                 ])
                 ->first();
 
@@ -345,8 +345,11 @@ class UserController extends BaseController
             return $this->error('User not found', [], HttpResponseCode::HTTP_NOT_FOUND);
         }
 
-        $savedQuestions = $user->savedQuestions()->get();
-
+        $savedQuestions = $user->savedQuestions()
+            ->with('groupQuestion.subject')
+            ->withCount('comment')
+            ->get();
+        Log::info("messageTES" . $savedQuestions);
         return $this->success('Successfully retrieved saved questions', $savedQuestions, HttpResponseCode::HTTP_OK);
     }
 }
