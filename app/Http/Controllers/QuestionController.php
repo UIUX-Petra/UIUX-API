@@ -36,38 +36,83 @@ class QuestionController extends BaseController
     }
 
 
-    public function getQuestionPaginated(Request $request)
+  public function getQuestionPaginated(Request $request)
     {
         $perPage = $request->input('per_page', 10);
         $userEmail = $request->input('email');
+
+        $sortBy = $request->input('sort_by', 'latest');
+        $filterTag = $request->input('filter_tag', null);
 
         $requestUser = null;
         if ($userEmail) {
             $requestUser = User::where('email', $userEmail)->first();
         }
 
-        $query = $this->model->with($this->model->getDefaultRelations())
+        $query = $this->model->with($this->model->getDefaultRelations()) // Asumsi getDefaultRelations() ada
             ->withCount([
                 'comment as comments_count',
-                'votes as vote_count',
-                'views as view_count'
-            ])
-            ->orderBy('created_at', 'desc');
+            ]);
 
+        // 1. Terapkan Filter berdasarkan Tag
+        if ($filterTag) {
+            $query->whereHas('groupQuestion.subject', function ($q) use ($filterTag) {
+                // Sesuaikan 'groupQuestion.subject' dan 'name' dengan struktur relasi & kolom Anda
+                $q->where('name', 'like', '%' . $filterTag . '%');
+            });
+        }
+
+        // 2. Terapkan Sorting
+        switch ($sortBy) {
+            case 'views':
+                $query->orderBy('view', 'desc');
+                break;
+            case 'votes':
+                $query->orderBy('vote', 'desc');
+                break;
+            case 'latest':
+            default:
+                $query->orderBy('created_at', 'desc');
+                break;
+        }
+        // Opsi: sorting sekunder jika sorting utama menghasilkan nilai yang sama
+        if ($sortBy === 'views' || $sortBy === 'votes') {
+            $query->orderBy('created_at', 'desc');
+        }
+
+        // 3. Tambahkan 'is_saved_by_request_user' jika user terautentikasi/disediakan
         if ($requestUser) {
             $query->withExists(['savedByUsers as is_saved_by_request_user' => function ($subQuery) use ($requestUser) {
+                // Sesuaikan 'savedByUsers' dan 'saved_questions.user_id' dengan relasi Anda
                 $subQuery->where('saved_questions.user_id', $requestUser->id);
             }]);
         }
 
-        $data = $query->paginate($perPage);
+        // Eksekusi query dan paginasi
+        $data = $query->paginate($perPage); // $data SEHARUSNYA adalah instance LengthAwarePaginator
 
-        if (!$requestUser || $data->isNotEmpty()) {
-            $data->getCollection()->transform(function ($item) use ($requestUser) {
-                if (!$requestUser) {
-                    $item->is_saved_by_request_user = false;
-                } else {
-                    $item->is_saved_by_request_user = (bool) $item->is_saved_by_request_user;
+        // 4. Transformasi koleksi item dalam paginator (JIKA DIPERLUKAN)
+        // Ini hanya akan berjalan jika ada item hasil paginasi
+        if ($data->isNotEmpty()) {
+            $data->getCollection()->transform(function ($item) {
+                // a. Pastikan 'is_saved_by_request_user' adalah boolean dan default ke false
+                //    Jika $requestUser null, 'withExists' tidak ditambahkan, jadi atribut ini mungkin tidak ada.
+                $item->is_saved_by_request_user = (bool) ($item->is_saved_by_request_user ?? false);
+
+                // b. Mapping field *_count ke nama yang lebih sederhana jika frontend membutuhkannya,
+                //    dan pastikan tipenya integer. Sesuai gambar Anda: 'view', 'vote', 'comments_count'.
+                if (isset($item->view_count)) {
+                    $item->view = (int) $item->view_count;
+                    // Anda bisa memilih untuk menghapus field asli jika tidak ingin ada di output:
+                    // unset($item->view_count);
+                }
+                if (isset($item->vote_count)) {
+                    $item->vote = (int) $item->vote_count;
+                    // unset($item->vote_count);
+                }
+                // 'comments_count' sudah sesuai dengan nama di gambar, pastikan integer
+                if (isset($item->comments_count)) {
+                    $item->comments_count = (int) $item->comments_count;
                 }
 
                 return $item;
@@ -76,6 +121,7 @@ class QuestionController extends BaseController
 
         return $this->success('Successfully retrieved data', $data);
     }
+
 
 
     public function store(Request $request)
