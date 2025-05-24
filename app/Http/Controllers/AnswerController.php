@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Answer;
 use App\Models\User;
+use App\Models\Answer;
 use Illuminate\Http\Request;
-
 class AnswerController extends BaseController
 {
     protected $userController;
@@ -15,11 +14,24 @@ class AnswerController extends BaseController
         $this->userController = new UserController(new User());
     }
 
-    public function store(Request $request){
+    public function store(Request $request)
+    {
         $userId = $this->userController->getUserId($request->email);
         $request->merge(['user_id' => $userId]);
         $request->request->remove('email');
-        return parent::store($request);
+
+        $response = parent::store($request);
+        $responseData = $response->getData(true);
+
+        if (isset($responseData['data']['id'])) {
+            $answer = Answer::with(['user'])->find($responseData['data']['id']);
+            $answer = $answer->makeVisible(['created_at']);
+            $responseData['data']['answer'] = $answer;
+            unset($responseData['data']['id']);
+
+            return response()->json($responseData, $responseData['code']);
+        }
+        return $response;
     }
 
     public function getAnswerByQuestionId($question_id)
@@ -57,5 +69,4 @@ class AnswerController extends BaseController
             return $this->error($e->getMessage());
         }
     }
-
 }
