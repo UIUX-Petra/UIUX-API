@@ -78,9 +78,11 @@ class QuestionController extends BaseController
         }
 
         if ($requestUser) {
-            $query->withExists(['savedByUsers as is_saved_by_request_user' => function ($subQuery) use ($requestUser) {
-                $subQuery->where('saved_questions.user_id', $requestUser->id);
-            }]);
+            $query->withExists([
+                'savedByUsers as is_saved_by_request_user' => function ($subQuery) use ($requestUser) {
+                    $subQuery->where('saved_questions.user_id', $requestUser->id);
+                }
+            ]);
         }
 
         $data = $query->paginate($perPage);
@@ -189,29 +191,34 @@ class QuestionController extends BaseController
         $question = $this->model::findOrFail($id);
         $userId = $this->userController->getUserId($request->email);
         if (is_null($userId)) {
-            return $this->error('User not found with the provided email.');
+            return $this->error('User not found or not authenticated.');
         }
         try {
             $question->upvote($userId);
             return $this->success('Question upvoted successfully.', $question->vote);
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), 400);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage());
+            \Log::error("Error upvoting question {$id} by user {$userId}: " . $e->getMessage(), ['exception' => $e]);
+            return $this->error('An error occurred while processing your vote.');
         }
     }
-
 
     public function downvoteQuestion(Request $request, $id)
     {
         $question = $this->model::findOrFail($id);
         $userId = $this->userController->getUserId($request->email);
         if (is_null($userId)) {
-            return $this->error('User not found with the provided email.');
+            return $this->error('User not found or not authenticated.');
         }
         try {
             $question->downvote($userId);
             return $this->success('Question downvoted successfully.', $question->vote);
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), 400);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage());
+            \Log::error("Error downvoting question {$id} by user {$userId}: " . $e->getMessage(), ['exception' => $e]);
+            return $this->error('An error occurred while processing your vote.');
         }
     }
 }
