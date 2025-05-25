@@ -24,7 +24,7 @@ class AnswerController extends BaseController
         $responseData = $response->getData(true);
 
         if (isset($responseData['data']['id'])) {
-            $answer = Answer::with(['user'])->find($responseData['data']['id']);
+            $answer = $this->model::with(['user'])->find($responseData['data']['id']);
             $answer = $answer->makeVisible(['created_at']);
             $responseData['data']['answer'] = $answer;
             unset($responseData['data']['id']);

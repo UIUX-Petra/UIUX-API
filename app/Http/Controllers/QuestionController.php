@@ -41,41 +41,18 @@ class QuestionController extends BaseController
         $perPage = $request->input('per_page', 10);
         $userEmail = $request->input('email');
 
-        $sortBy = $request->input('sort_by', 'latest');
-        $filterTag = $request->input('filter_tag', null);
-
         $requestUser = null;
         if ($userEmail) {
             $requestUser = User::where('email', $userEmail)->first();
         }
 
-        $query = $this->model->with($this->model->getDefaultRelations()) // Asumsi getDefaultRelations() ada
+        $query = $this->model->with($this->model->getDefaultRelations())
             ->withCount([
                 'comment as comments_count',
-            ]);
-
-        // filter berdasarkan Tag
-        if ($filterTag) {
-            $query->whereHas('groupQuestion.subject', function ($q) use ($filterTag) {
-                $q->where('name', 'like', '%' . $filterTag . '%');
-            });
-        }
-
-        switch ($sortBy) {
-            case 'views':
-                $query->orderBy('view', 'desc');
-                break;
-            case 'votes':
-                $query->orderBy('vote', 'desc');
-                break;
-            case 'latest':
-            default:
-                $query->orderBy('created_at', 'desc');
-                break;
-        }
-        if ($sortBy === 'views' || $sortBy === 'votes') {
-            $query->orderBy('created_at', 'desc');
-        }
+                'votes as vote_count',
+                'views as view_count'
+            ])
+            ->orderBy('created_at', 'desc');
 
         if ($requestUser) {
             $query->withExists([
@@ -87,19 +64,12 @@ class QuestionController extends BaseController
 
         $data = $query->paginate($perPage);
 
-        if ($data->isNotEmpty()) {
-            $data->getCollection()->transform(function ($item) {
-                $item->is_saved_by_request_user = (bool) ($item->is_saved_by_request_user ?? false);
-
-                if (isset($item->view_count)) {
-                    $item->view = (int) $item->view_count;
-
-                }
-                if (isset($item->vote_count)) {
-                    $item->vote = (int) $item->vote_count;
-                }
-                if (isset($item->comments_count)) {
-                    $item->comments_count = (int) $item->comments_count;
+        if (!$requestUser || $data->isNotEmpty()) {
+            $data->getCollection()->transform(function ($item) use ($requestUser) {
+                if (!$requestUser) {
+                    $item->is_saved_by_request_user = false;
+                } else {
+                    $item->is_saved_by_request_user = (bool) $item->is_saved_by_request_user;
                 }
 
                 return $item;
@@ -108,7 +78,6 @@ class QuestionController extends BaseController
 
         return $this->success('Successfully retrieved data', $data);
     }
-
 
 
     public function store(Request $request)
@@ -162,6 +131,7 @@ class QuestionController extends BaseController
                         'username' => $comment->user->username,
                         'user_email' => $comment->user->email,
                         'comment' => $comment->comment,
+                        'timestamp' => $comment->created_at
                     ];
                 }),
             ];
