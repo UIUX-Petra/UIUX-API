@@ -15,7 +15,8 @@ class Subject extends Model
 
     protected $fillable = [
         'name',
-        'description'
+        'description',
+        'abbreviation'
     ];
 
     public static function validationRules()
