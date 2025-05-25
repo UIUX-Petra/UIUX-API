@@ -3,6 +3,7 @@
 use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\UserController;
@@ -63,6 +64,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
 });
+Route::get('/search', [SearchController::class, 'search']);
 
 Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
