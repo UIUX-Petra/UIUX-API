@@ -129,6 +129,7 @@ class QuestionController extends BaseController
                         'username' => $comment->user->username,
                         'user_email' => $comment->user->email,
                         'comment' => $comment->comment,
+                        'timestamp' => $comment->created_at
                     ];
                 }),
             ];
