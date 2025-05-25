@@ -45,13 +45,16 @@ class AnswerController extends BaseController
         $answer = $this->model::findOrFail($id);
         $userId = $this->userController->getUserId($request->email);
         if (is_null($userId)) {
-            return $this->error('User not found with the provided email.');
+            return $this->error('User not found or not authenticated.');
         }
         try {
             $answer->upvote($userId);
             return $this->success('Answer upvoted successfully.', $answer->vote);
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), 400);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage());
+            \Log::error("Error upvoting question {$id} by user {$userId}: " . $e->getMessage(), ['exception' => $e]);
+            return $this->error('An error occurred while processing your vote.');
         }
     }
 
@@ -60,13 +63,16 @@ class AnswerController extends BaseController
         $answer = $this->model::findOrFail($id);
         $userId = $this->userController->getUserId($request->email);
         if (is_null($userId)) {
-            return $this->error('User not found with the provided email.');
+            return $this->error('User not found or not authenticated.');
         }
         try {
             $answer->downvote($userId);
             return $this->success('Answer downvoted successfully.', $answer->vote);
+        } catch (\InvalidArgumentException $e) {
+            return $this->error($e->getMessage(), 400);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage());
+            \Log::error("Error downvoting question {$id} by user {$userId}: " . $e->getMessage(), ['exception' => $e]);
+            return $this->error('An error occurred while processing your vote.');
         }
     }
 }
