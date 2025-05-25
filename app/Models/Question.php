@@ -61,7 +61,7 @@ class Question extends Model
     {
         return [
             "answer",
-            // "comment",
+            "comment",
             "user",
             "groupQuestion.subject",
         ];
