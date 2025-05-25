@@ -16,6 +16,7 @@ return new class extends Migration
             $table->uuid('user_id');
             $table->uuid('votable_id');
             $table->string('votable_type');
+            $table->tinyInteger('type'); 
             $table->timestamps();
 
             $table->unique(['user_id', 'votable_id', 'votable_type']);
