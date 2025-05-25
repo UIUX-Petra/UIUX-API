@@ -63,6 +63,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('questions/{id}/downvote', [QuestionController::class, 'downvoteQuestion']);
     Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
+
+    Route::put('/questions/{id}', [QuestionController::class, 'update']);
+    Route::delete('/questions/{id}', [QuestionController::class, 'deleteQuestionAPI']); // <<< UBAH DI SINI
 });
 Route::get('/search', [SearchController::class, 'search']);
 

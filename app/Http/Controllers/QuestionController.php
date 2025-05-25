@@ -13,6 +13,7 @@ use App\Http\Controllers\BaseController;
 use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\GroupQuestionController;
+use Illuminate\Support\Facades\Storage;
 
 class QuestionController extends BaseController
 {
@@ -219,6 +220,127 @@ class QuestionController extends BaseController
         } catch (\Exception $e) {
             \Log::error("Error downvoting question {$id} by user {$userId}: " . $e->getMessage(), ['exception' => $e]);
             return $this->error('An error occurred while processing your vote.');
+        }
+    }
+    
+    public function update(Request $request, $id)
+    {
+        // Dapatkan user ID dari sesi yang login
+        $userId = $this->userController->getUserId($request->email);
+        if (is_null($userId)) {
+            return $this->error('User not found or not authenticated.', HttpResponseCode::HTTP_UNAUTHORIZED);
+        }
+
+        try {
+            $question = Question::findOrFail($id);
+
+            // Pastikan hanya pemilik pertanyaan yang bisa mengedit
+            if ($question->user_id !== $userId) {
+                return $this->error('You are not authorized to update this question.', HttpResponseCode::HTTP_FORBIDDEN);
+            }
+
+            // Validasi input
+            $request->validate([
+                'title' => 'required|string|max:255',
+                'question' => 'required|string',
+                'subject_id' => 'array',
+                'subject_id.*' => 'exists:subjects,id', // Pastikan subjects table dan id column ada
+                'image' => 'nullable|image|mimes:jpeg,png,jpg,gif,svg|max:5042', // Sesuaikan ukuran max
+            ]);
+
+            $question->title = $request->title;
+            $question->question = $request->question;
+
+            // Handle image update/deletion
+            // Jika ada file image baru di request
+            if ($request->hasFile('image')) {
+                // Hapus gambar lama jika ada
+                if ($question->image) {
+                    Storage::disk('public')->delete($question->image);
+                    Log::info("Old image deleted: " . $question->image);
+                }
+                // Simpan gambar baru
+                $timestamp = date('Y-m-d_H-i-s');
+                $emailCleaned = str_replace(['@', '.'], '_', $request->email);
+                $extension = $request->file('image')->getClientOriginalExtension();
+                $customFileName = "q_" . $emailCleaned . "_" . $timestamp . "." . $extension;
+                $imagePath = $request->file('image')->storeAs("uploads/questions", $customFileName, 'public');
+                $question->image = $imagePath;
+                Log::info("New image uploaded to: " . $imagePath);
+            } elseif ($request->has('image') && $request->input('image') === '') {
+                // Jika input 'image' adalah string kosong, berarti user ingin menghapus gambar yang sudah ada
+                if ($question->image) {
+                    Storage::disk('public')->delete($question->image);
+                    $question->image = null;
+                    Log::info("Existing image explicitly deleted for question ID: " . $id);
+                }
+            }
+            // Jika tidak ada file 'image' baru dan 'image' tidak kosong string, berarti gambar lama dipertahankan
+
+            $question->save();
+
+            // Sinkronkan tags (subjects)
+            if ($request->has('subject_id')) {
+                $question->subjects()->sync($request->subject_id);
+            } else {
+                $question->subjects()->detach(); // Hapus semua subjects jika tidak ada yang dipilih
+            }
+
+            // Muat ulang relasi subjects dan image_url untuk respons yang lengkap
+            $question->load('subjects');
+            $questionData = $question->toArray();
+            $questionData['image_url'] = $question->image ? Storage::url($question->image) : null;
+            $questionData['subjects'] = $question->subjects->map(function($subject) {
+                return ['id' => $subject->id, 'name' => $subject->name];
+            });
+
+            return $this->success('Question updated successfully.', $questionData);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->error('Question not found.', HttpResponseCode::HTTP_NOT_FOUND);
+        } catch (\Exception $e) {
+            Log::error("Error updating question {$id}: " . $e->getMessage(), ['exception' => $e]);
+            return $this->error('Failed to update question: ' . $e->getMessage(), HttpResponseCode::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+     public function deleteQuestionAPI(Request $request, $id) // <<< NAMA METODE DIUBAH DI SINI
+    {
+        $userId = $this->userController->getUserId($request->email);
+        if (is_null($userId)) {
+            return $this->error('User not found or not authenticated.', HttpResponseCode::HTTP_UNAUTHORIZED);
+        }
+
+        try {
+            $question = Question::findOrFail($id);
+
+            // Pastikan hanya pemilik pertanyaan yang bisa menghapus
+            if ($question->user_id !== $userId) {
+                return $this->error('You are not authorized to delete this question.', HttpResponseCode::HTTP_FORBIDDEN);
+            }
+
+            // Hapus gambar terkait jika ada
+            if ($question->image) {
+                Storage::disk('public')->delete($question->image);
+                Log::info("Image deleted for question ID: " . $id . " Path: " . $question->image);
+            }
+
+            // Hapus relasi tags (subjects)
+            $question->subjects()->detach();
+            // Hapus komentar dan jawaban terkait (jika menggunakan onDelete('cascade') di database, ini otomatis)
+            // Jika tidak, Anda perlu menghapusnya secara manual di sini:
+            // $question->comment()->delete();
+            // $question->answer()->delete();
+
+            $question->delete();
+
+            return $this->success('Question deleted successfully.', null);
+
+        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
+            return $this->error('Question not found.', HttpResponseCode::HTTP_NOT_FOUND);
+        } catch (\Exception $e) {
+            Log::error("Error deleting question {$id}: " . $e->getMessage(), ['exception' => $e]);
+            return $this->error('Failed to delete question: ' . $e->getMessage(), HttpResponseCode::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
 }
