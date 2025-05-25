@@ -75,7 +75,6 @@ class User extends Authenticatable implements MustVerifyEmail
     public function relations()
     {
         return [
-            'question',
             'userAchievement',
             'answer',
             'answer.question.groupQuestion.subject',
