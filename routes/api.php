@@ -38,10 +38,12 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('/unsaveQuestion/{email}/{questionId}', [UserController::class, 'unsaveQuestion']);
     Route::get('/getSavedQuestions/{email}', [UserController::class, 'getSavedQuestions']);
     Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
-    Route::apiResource('questions', QuestionController::class); //dah gakepake
+    Route::apiResource('questions', QuestionController::class);
+    Route::post('questions/{id}/updatePartial', [QuestionController::class, 'updatePartial']);
     Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
 
     Route::apiResource('answers', AnswerController::class);
+    Route::post('answers/{id}/updatePartial', [AnswerController::class, 'updatePartial']);
 
     Route::apiResource('tags', SubjectController::class);
     Route::get('/tagOnly', [SubjectController::class, 'tagOnly']);
@@ -63,7 +65,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('questions/{id}/downvote', [QuestionController::class, 'downvoteQuestion']);
     Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
-    Route::post('answers/{id}/updatePartial', [AnswerController::class, 'updatePartial']);
 });
 Route::get('/search', [SearchController::class, 'search']);
 
