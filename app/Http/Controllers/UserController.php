@@ -181,6 +181,10 @@ class UserController extends BaseController
         $followersUser = $user->followers;
         return $this->success('Successfully retrieved data', $followersUser);
     }
+    public function getUserQuestions(string $id)
+    {
+        return $this->success('Successfully retrieved data', $this->model->with(['question.answer'])->findOrFail($id));
+    }
 
     public function editProfileUser(Request $request)
     {
