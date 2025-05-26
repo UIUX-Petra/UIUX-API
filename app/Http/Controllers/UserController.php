@@ -183,7 +183,15 @@ class UserController extends BaseController
     }
     public function getUserQuestions(string $id)
     {
-        return $this->success('Successfully retrieved data', $this->model->with(['question.answer'])->findOrFail($id));
+        // Pastikan ini memuat model User, dan kemudian memuat relasi 'question'
+        // dengan tambahan 'votes_count'
+        $user = $this->model->with([
+            'question' => function ($query) {
+                $query->with('answer')->withCount('votes'); // Tambahkan withCount('votes') di sini
+            }
+        ])->findOrFail($id);
+
+        return $this->success('Successfully retrieved data', $user);
     }
 
     public function editProfileUser(Request $request)
