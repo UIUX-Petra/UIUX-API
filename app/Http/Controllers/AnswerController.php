@@ -40,6 +40,26 @@ class AnswerController extends BaseController
         return $this->success('Successfully retrieved data', $answers);
     }
 
+    public function getAnswersPaginated(Request $request)
+    {
+        $perPage = $request->input('per_page', 10);
+        $userId = $request->input('user_id');
+
+        if (!$userId) {
+            return $this->error('User ID is required to fetch answers.', HttpResponseCode::HTTP_BAD_REQUEST);
+        }
+
+        $query = $this->model->where('user_id', $userId)
+                            ->with($this->model->relations())
+                            ->withCount('votes');
+
+        $query->orderBy('created_at', 'desc');
+
+        $answersPaginator = $query->paginate($perPage);
+
+        return $this->success('Successfully retrieved paginated answers.', $answersPaginator);
+    }
+
     public function upvoteAnswer(Request $request, $id)
     {
         $answer = $this->model::findOrFail($id);
