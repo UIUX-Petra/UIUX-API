@@ -16,6 +16,7 @@ return new class extends Migration
             $table->integer('vote')->default(0);
             $table->string('image')->nullable();
             $table->text('answer');
+            $table->boolean('verified')->default(0);
             $table->uuid('question_id');
             $table->uuid('user_id');
             $table->timestamps();

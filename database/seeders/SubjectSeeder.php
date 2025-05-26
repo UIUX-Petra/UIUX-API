@@ -2,10 +2,8 @@
 
 namespace Database\Seeders;
 
-use App\Models\Subject;
+use App\Models\Subject; 
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
 
 class SubjectSeeder extends Seeder
 {
@@ -16,67 +14,104 @@ class SubjectSeeder extends Seeder
      */
     public function run()
     {
-        // Define the subjects for Informatics program
-        $subjects = [
-            ['name' => 'Introduction to Programming', 'description' => 'An introductory course to programming using popular programming languages like Python and Java.'],
-            ['name' => 'Data Structures and Algorithms', 'description' => 'Study of data structures such as arrays, linked lists, trees, and graphs, along with the algorithms to manipulate them.'],
-            ['name' => 'Database Systems', 'description' => 'Learn about relational databases, SQL, and techniques for database management and optimization.'],
-            ['name' => 'Computer Networks', 'description' => 'An introduction to computer networking principles, protocols, and internet technologies.'],
-            ['name' => 'Operating Systems', 'description' => 'An overview of the basic functions of operating systems such as process management, memory management, and file systems.'],
-            ['name' => 'Software Engineering', 'description' => 'An in-depth study of software development methodologies, project management, and software testing.'],
-            ['name' => 'Web Development', 'description' => 'Learn how to design and build modern web applications using HTML, CSS, JavaScript, and backend frameworks.'],
-            ['name' => 'Artificial Intelligence', 'description' => 'Introduction to the basics of AI, including machine learning, neural networks, and data analysis techniques.'],
-            ['name' => 'Mobile App Development', 'description' => 'A course covering mobile application development for platforms like Android and iOS.'],
-            ['name' => 'Cybersecurity', 'description' => 'Learn about securing networks, systems, and data from cyber-attacks and understanding cryptography and security protocols.'],
-            ['name' => 'Human-Computer Interaction', 'description' => 'The study of how people interact with computers and designing user-friendly interfaces.'],
-            ['name' => 'Cloud Computing', 'description' => 'Introduction to cloud platforms like AWS, Azure, and Google Cloud, and how to use them for scalable computing resources.'],
-            ['name' => 'Big Data', 'description' => 'Learn the techniques for analyzing and processing large datasets using tools like Hadoop and Spark.'],
-            ['name' => 'Machine Learning', 'description' => 'Study of algorithms that allow machines to learn from data and improve over time, including supervised and unsupervised learning.'],
-            ['name' => 'Digital Logic Design', 'description' => 'Study of basic digital components like gates, flip-flops, and how they are used to design digital systems.'],
-            ['name' => 'Computer Graphics', 'description' => 'Introduction to computer graphics techniques including rendering, 3D modeling, and animation.'],
-            ['name' => 'Cloud Storage and Virtualization', 'description' => 'Learn about cloud storage systems and virtualization technologies used in modern data centers.'],
-            ['name' => 'Computer Vision', 'description' => 'Study of how computers can be made to interpret and process visual information from the world, using algorithms and machine learning.'],
-            ['name' => 'Game Development', 'description' => 'Learn how to create video games, covering game engines, graphics, AI, and physics simulation.'],
-            ['name' => 'Data Analytics', 'description' => 'Introduction to data analysis techniques including data wrangling, statistics, and visualization using tools like Excel and Python.'],
-            ['name' => 'Distributed Systems', 'description' => 'Study of systems where components are located on different networked computers that communicate and coordinate their actions.'],
-            ['name' => 'Business Intelligence', 'description' => 'Using technology to analyze data and provide actionable insights to assist in business decision-making.'],
-            ['name' => 'Parallel Computing', 'description' => 'Techniques for parallel processing to improve the performance of computational tasks on multi-core processors or distributed systems.'],
-            ['name' => 'Natural Language Processing', 'description' => 'Study of how computers can understand and process human language, including text and speech.'],
-            ['name' => 'Cryptography', 'description' => 'Introduction to techniques used for securing communication and data storage, including encryption algorithms and protocols.'],
-            ['name' => 'Ethical Hacking', 'description' => 'Learn how to identify and fix security vulnerabilities in systems by simulating attacks in an ethical manner.'],
-            ['name' => 'Internet of Things (IoT)', 'description' => 'Learn about the network of connected devices, sensors, and actuators that exchange data over the internet.'],
-            ['name' => 'Blockchain Technology', 'description' => 'Study the principles of blockchain and its application in cryptocurrencies, secure transactions, and smart contracts.'],
-            ['name' => 'Advanced Database Systems', 'description' => 'A deep dive into complex database systems, including NoSQL databases, graph databases, and data warehousing.'],
-            ['name' => 'Virtual Reality', 'description' => 'Study the technologies used to create immersive virtual environments and how they are applied in gaming and simulation.'],
-            ['name' => 'Data Science', 'description' => 'Learn how to analyze and interpret complex data using statistical methods, programming, and machine learning.'],
-            ['name' => 'IT Project Management', 'description' => 'A focus on managing technology projects, including planning, execution, and team collaboration.'],
-            ['name' => 'Advanced Machine Learning', 'description' => 'A more in-depth exploration of machine learning algorithms, including reinforcement learning and deep learning.'],
-            ['name' => 'Software Testing', 'description' => 'Study different software testing methodologies and how to ensure the quality of software applications.'],
-            ['name' => 'Digital Forensics', 'description' => 'Learn how to investigate and recover data from digital devices to solve cybercrimes or data breaches.'],
-            ['name' => 'Data Mining', 'description' => 'Techniques for discovering patterns in large datasets, using statistical models and machine learning algorithms.'],
-            ['name' => 'AI Ethics', 'description' => 'Examine the ethical considerations and societal impacts of artificial intelligence and machine learning.'],
-            ['name' => 'Web Security', 'description' => 'Study of the security aspects of web applications and how to prevent vulnerabilities such as SQL injection and cross-site scripting.'],
-            ['name' => 'Smart Cities', 'description' => 'Learn how IoT, big data, and AI are used to build efficient, sustainable, and intelligent urban environments.'],
-            ['name' => 'Business Process Automation', 'description' => 'Study how software and technology are used to automate business processes and improve efficiency.'],
-            ['name' => 'Advanced Networking', 'description' => 'A deeper dive into networking technologies, protocols, and advanced network configurations.'],
-            ['name' => 'Computational Biology', 'description' => 'Using computational techniques to understand biological data, including genomics and bioinformatics.'],
-            ['name' => 'Digital Transformation', 'description' => 'How businesses and organizations are using technology to fundamentally change their operations and models.'],
-            ['name' => 'Cloud Application Development', 'description' => 'Learn how to design and build applications that are hosted on cloud platforms like AWS or Google Cloud.'],
-            ['name' => 'Robotics', 'description' => 'Introduction to robotics, including designing, building, and programming autonomous robots.'],
-            ['name' => 'Quantum Computing', 'description' => 'Explore the principles and applications of quantum computing, a next-generation technology with enormous computational power.'],
-            ['name' => 'Data Warehousing', 'description' => 'Learn how to store and manage large volumes of data in a centralized repository for reporting and analysis.'],
-            ['name' => 'Advanced Artificial Intelligence', 'description' => 'Study the advanced methods of AI, including deep learning, natural language processing, and computer vision.'],
-            ['name' => 'Embedded Systems', 'description' => 'Learn how to design and program embedded systems used in devices like medical equipment, cars, and consumer electronics.'],
-            ['name' => 'Smart Devices and Sensors', 'description' => 'Learn about the design and development of smart devices and sensors that collect and transmit data.'],
-            ['name' => 'Cloud Infrastructure', 'description' => 'Study the architecture and components of cloud infrastructure, including servers, storage, and networking.'],
-            ['name' => 'Artificial Neural Networks', 'description' => 'Introduction to neural networks, the building blocks of deep learning, and how they are used in various AI applications.'],
-            ['name' => 'Advanced Data Analytics', 'description' => 'In-depth analysis techniques, including predictive modeling, time series analysis, and machine learning algorithms.'],
-            ['name' => 'Tech Entrepreneurship', 'description' => 'Learn about the business side of technology, including startup creation, funding, and scaling.'],
+        $subjectsData = [
+            ['name' => 'Administrasi Basis Data', 'abbreviation' => 'ABD', 'description' => 'Mempelajari konsep dan praktik administrasi, pengelolaan, pemeliharaan, dan keamanan sistem basis data untuk memastikan ketersediaan, integritas, dan kinerja optimal.'],
+            ['name' => 'Arsitektur Berorientasi Layanan', 'abbreviation' => 'ABL', 'description' => 'Mengajarkan prinsip-prinsip desain dan implementasi sistem perangkat lunak yang fleksibel dan terintegrasi menggunakan pendekatan arsitektur berorientasi layanan (SOA).'],
+            ['name' => 'Analisa Desain Berorientasi Obyek', 'abbreviation' => 'ADBO', 'description' => 'Fokus pada metodologi analisis kebutuhan sistem dan perancangan solusi perangkat lunak menggunakan paradigma berorientasi objek, termasuk UML dan pola desain.'],
+            ['name' => 'Analisis dan Desain Sistem Informasi', 'abbreviation' => 'ADSI', 'description' => 'Membahas tahapan, teknik, dan alat dalam menganalisis kebutuhan pengguna serta merancang sistem informasi yang efektif, efisien, dan sesuai tujuan organisasi.'],
+            ['name' => 'Akutansi Biaya', 'abbreviation' => 'AKBI', 'description' => 'Mempelajari konsep, metode perhitungan, analisis, serta pengendalian biaya dalam suatu entitas bisnis untuk pengambilan keputusan dan penilaian kinerja.'],
+            ['name' => 'Aljabar Linier - Matriks', 'abbreviation' => 'ALIN', 'description' => 'Pengantar konsep dasar aljabar linier dengan penekanan pada matriks, vektor, ruang vektor, transformasi linier, dan aplikasinya dalam menyelesaikan sistem persamaan linier.'],
+            ['name' => 'Arsitektur dan Organisasi Komputer', 'abbreviation' => 'AOK', 'description' => 'Membahas struktur dasar, fungsi, organisasi komponen-komponen sistem komputer (CPU, memori, I/O), serta interaksi dan kinerja sistem secara keseluruhan.'],
+            ['name' => 'Algoritma dan Pemrograman', 'abbreviation' => 'AP', 'description' => 'Dasar-dasar penyusunan algoritma yang logis dan efisien untuk menyelesaikan masalah komputasi serta implementasinya menggunakan bahasa pemrograman struktural.'],
+            ['name' => 'Aplikasi Komputer', 'abbreviation' => 'APLIKOM', 'description' => 'Pengenalan dan pelatihan penggunaan berbagai aplikasi komputer perkantoran (pengolah kata, spreadsheet, presentasi) dan alat produktivitas lainnya.'],
+            ['name' => 'Administrasi Sistem Operasi', 'abbreviation' => 'ASO', 'description' => 'Mempelajari instalasi, konfigurasi, pengelolaan, pemeliharaan, dan troubleshooting sistem operasi jaringan maupun server (misalnya Linux, Windows Server).'],
+            ['name' => 'Aplikasi Sistem Pakar', 'abbreviation' => 'ASP', 'description' => 'Membahas konsep, arsitektur, metode inferensi, dan pengembangan aplikasi sistem pakar untuk menyelesaikan masalah yang memerlukan keahlian manusia.'],
+            ['name' => 'Audit Sistem Informasi', 'abbreviation' => 'Audit SI', 'description' => 'Mempelajari proses pengumpulan dan evaluasi bukti untuk menentukan apakah sistem informasi telah melindungi aset, menjaga integritas data, mencapai tujuan organisasi secara efektif, dan mematuhi regulasi.'],
+            ['name' => 'Basis Data', 'abbreviation' => 'BD', 'description' => 'Pengantar konsep dasar basis data, model data (relasional, NoSQL), bahasa query (SQL), perancangan basis data, dan normalisasi.'],
+            ['name' => 'Basis Data Lanjutan', 'abbreviation' => 'BDL', 'description' => 'Pembahasan topik-topik lanjutan dalam basis data, seperti optimasi query, manajemen transaksi, konkurensi, keamanan basis data, dan basis data terdistribusi.'],
+            ['name' => 'Business Information System Special Topic', 'abbreviation' => 'BISST', 'description' => 'Mata kuliah topik khusus yang mendalami aspek-aspek tertentu dalam sistem informasi bisnis yang relevan dengan perkembangan teknologi dan kebutuhan industri terkini.'],
+            ['name' => 'Computing Infrastructure Development', 'abbreviation' => 'CID', 'description' => 'Mempelajari perencanaan, perancangan, implementasi, dan pengelolaan infrastruktur komputasi modern, termasuk jaringan, server, virtualisasi, dan penyimpanan data.'],
+            ['name' => 'Cisco Networking Academy Program', 'abbreviation' => 'CNAP', 'description' => 'Program pelatihan dan sertifikasi jaringan komputer berbasis kurikulum dari Cisco Systems, mencakup konsep dasar hingga teknologi jaringan tingkat lanjut.'],
+            ['name' => 'Desain dan Analisa Algoritma', 'abbreviation' => 'DAA', 'description' => 'Mempelajari berbagai teknik perancangan algoritma (divide and conquer, greedy, dynamic programming) dan menganalisis efisiensi serta kompleksitasnya (waktu dan ruang).'],
+            ['name' => 'Data Mining', 'abbreviation' => 'DATMIN', 'description' => 'Mengajarkan teknik dan metode untuk menemukan pola, pengetahuan, dan wawasan yang berguna dari kumpulan data besar (big data) menggunakan algoritma machine learning.'],
+            ['name' => 'Data Warehouse', 'abbreviation' => 'DATWARE', 'description' => 'Mempelajari konsep, arsitektur, perancangan, implementasi, dan pengelolaan data warehouse untuk mendukung analisis data bisnis dan pengambilan keputusan (BI).'],
+            ['name' => 'Desain Game', 'abbreviation' => 'DG', 'description' => 'Mempelajari prinsip-prinsip dasar, proses kreatif, dan aspek teknis dalam perancangan permainan digital, termasuk mekanika permainan, narasi, level desain, dan pengalaman pengguna.'],
+            ['name' => 'Dasar Sistem Komputer', 'abbreviation' => 'DSK', 'description' => 'Pengenalan komponen-komponen dasar sistem komputer, sistem bilangan, representasi data, gerbang logika, aritmatika komputer, dan organisasi memori dasar.'],
+            ['name' => 'Decision Support System', 'abbreviation' => 'DSS', 'description' => 'Mempelajari konsep, arsitektur, pengembangan, dan penggunaan sistem pendukung keputusan (SPK) untuk membantu manajer dalam proses analisis data dan pengambilan keputusan.'],
+            ['name' => 'Enterprise Architecture', 'abbreviation' => 'EA', 'description' => 'Membahas kerangka kerja (framework), metodologi, dan praktik untuk merancang, mengelola, dan mengembangkan arsitektur perusahaan secara holistik, menyelaraskan TI dengan strategi bisnis.'],
+            ['name' => 'E-Business', 'abbreviation' => 'EBIS', 'description' => 'Mempelajari konsep, model, strategi, dan implementasi pemanfaatan teknologi informasi dan internet untuk menjalankan berbagai proses bisnis secara elektronik (e-commerce, e-procurement).'],
+            ['name' => 'Enterprise Resource Planning', 'abbreviation' => 'ERP', 'description' => 'Pengenalan konsep, modul, arsitektur, dan implementasi sistem perencanaan sumber daya perusahaan (ERP) untuk mengintegrasikan proses bisnis utama dalam organisasi.'],
+            ['name' => 'Sistem Informasi Geografis', 'abbreviation' => 'GIS', 'description' => 'Mempelajari konsep, teknologi, perangkat lunak, dan aplikasi sistem informasi geografis (SIG) untuk menangkap, menyimpan, menganalisis, dan memvisualisasikan data spasial (geografis).'],
+            ['name' => 'Grafika Komputer', 'abbreviation' => 'GRAFKOM', 'description' => 'Membahas teknik, algoritma, dan model matematika untuk menghasilkan, memanipulasi, dan menampilkan gambar serta model grafis 2D dan 3D menggunakan komputer.'],
+            ['name' => 'Interaksi Manusia dan Komputer', 'abbreviation' => 'IMK', 'description' => 'Mempelajari bagaimana manusia berinteraksi dengan teknologi komputer, prinsip-prinsip perancangan antarmuka pengguna (UI) yang efektif, intuitif, dan ramah pengguna (UX).'],
+            ['name' => 'Internet of Everything', 'abbreviation' => 'IOE', 'description' => 'Konsep perluasan dari Internet of Things (IoT) yang menghubungkan orang, proses, data, dan benda untuk menciptakan peluang jaringan yang lebih kaya dan cerdas.'],
+            ['name' => 'iOS Application Programming', 'abbreviation' => 'IOSAP', 'description' => 'Mempelajari pengembangan aplikasi mobile untuk platform iOS (iPhone, iPad) menggunakan bahasa pemrograman Swift atau Objective-C dan lingkungan pengembangan Xcode.'],
+            ['name' => 'Jaringan Komputer', 'abbreviation' => 'JARKOM', 'description' => 'Pengantar konsep dasar jaringan komputer, model referensi OSI dan TCP/IP, protokol jaringan, topologi, perangkat keras, dan teknologi jaringan kabel maupun nirkabel.'],
+            ['name' => 'JAVA', 'abbreviation' => 'JAVA', 'description' => 'Mempelajari bahasa pemrograman Java secara mendalam, konsep pemrograman berorientasi objek (OOP), dan pengembangan berbagai jenis aplikasi (desktop, web, mobile) menggunakan platform Java.'],
+            ['name' => 'Jaringan Saraf Tiruan', 'abbreviation' => 'JST', 'description' => 'Pengenalan konsep dasar, arsitektur, algoritma pembelajaran (learning algorithms), dan aplikasi jaringan saraf tiruan (neural networks) dalam berbagai bidang kecerdasan buatan.'],
+            ['name' => 'Kalkulus I', 'abbreviation' => 'KAL1', 'description' => 'Mempelajari konsep dasar kalkulus diferensial dan integral untuk fungsi satu variabel, termasuk limit, turunan, integral tak tentu, integral tentu, dan aplikasinya.'],
+            ['name' => 'Kalkulus II', 'abbreviation' => 'KAL2', 'description' => 'Lanjutan dari Kalkulus I, membahas teknik pengintegralan lebih lanjut, aplikasi integral, barisan dan deret tak hingga, serta pengantar kalkulus peubah banyak.'],
+            ['name' => 'Kecerdasan Buatan', 'abbreviation' => 'KB', 'description' => 'Pengantar konsep, teknik, dan aplikasi kecerdasan buatan (Artificial Intelligence), termasuk pencarian (search), representasi pengetahuan, penalaran, dan dasar-dasar machine learning.'],
+            ['name' => 'Komunikasi Data dan Jaringan Komputer', 'abbreviation' => 'KDJK', 'description' => 'Mempelajari prinsip-prinsip komunikasi data, media transmisi, teknik pensinyalan, error detection/correction, serta konsep dasar dan teknologi jaringan komputer yang lebih mendalam.'],
+            ['name' => 'Komunikasi Interpersonal', 'abbreviation' => 'KOMAL', 'description' => 'Mengembangkan pemahaman dan keterampilan komunikasi antar pribadi yang efektif, baik secara verbal maupun non-verbal, dalam konteks personal maupun profesional.'],
+            ['name' => 'Logika Matematika', 'abbreviation' => 'LOGMAT', 'description' => 'Mempelajari dasar-dasar logika proposisional, logika predikat, himpunan, relasi, fungsi, dan teknik pembuktian sebagai landasan berpikir logis dan matematis dalam ilmu komputer.'],
+            ['name' => 'Manajemen Perangkat Jaringan', 'abbreviation' => 'MPJ', 'description' => 'Mempelajari teknik, protokol (SNMP), dan alat (tools) untuk mengelola, mengkonfigurasi, memonitor, dan memelihara perangkat keras jaringan seperti router, switch, dan firewall.'],
+            ['name' => 'Manajemen Proyek Teknologi Informasi', 'abbreviation' => 'ManPro', 'description' => 'Membahas metodologi (waterfall, agile), teknik, dan alat untuk merencanakan, melaksanakan, mengendalikan, memonitor, dan menyelesaikan proyek teknologi informasi secara sukses.'],
+            ['name' => 'Manajemen Risiko', 'abbreviation' => 'ManRis', 'description' => 'Mempelajari proses identifikasi, analisis, evaluasi, penanganan (mitigasi, transfer, avoidance, acceptance), dan pemantauan risiko dalam konteks proyek TI atau operasional organisasi.'],
+            ['name' => 'Matematika Dasar', 'abbreviation' => 'MatDas', 'description' => 'Penguatan konsep-konsep dasar matematika yang meliputi aljabar, fungsi, trigonometri, dan dasar-dasar kalkulus sebagai fondasi untuk studi lanjut di bidang teknik dan sains.'],
+            ['name' => 'Matematika Diskrit', 'abbreviation' => 'MatDis', 'description' => 'Mempelajari struktur matematika yang bersifat diskrit, seperti teori himpunan, logika, teori graf, kombinatorika, relasi, fungsi, dan aljabar Boolean, yang fundamental untuk ilmu komputer.'],
+            ['name' => 'Metodologi Penelitian', 'abbreviation' => 'MetPen', 'description' => 'Mempelajari prinsip, etika, dan langkah-langkah sistematis dalam melakukan penelitian ilmiah, termasuk perumusan masalah, studi literatur, pengumpulan data, analisis data, dan penulisan laporan ilmiah.'],
+            ['name' => 'Mikrotik', 'abbreviation' => 'MIKROTIK', 'description' => 'Pelatihan praktis dan mendalam mengenai penggunaan perangkat keras (RouterBOARD) dan perangkat lunak (RouterOS) MikroTik untuk manajemen jaringan, routing, firewall, hotspot, dan VPN.'],
+            ['name' => 'Manajemen Jaringan Komputer', 'abbreviation' => 'MJK', 'description' => 'Membahas konsep, protokol, standar, dan alat yang digunakan untuk merancang, mengimplementasikan, mengelola, memonitor, dan mengamankan infrastruktur jaringan komputer secara efektif.'],
+            ['name' => 'Manajemen Keamanan Komputer', 'abbreviation' => 'MKK', 'description' => 'Mempelajari aspek-aspek manajemen keamanan informasi dan komputer, termasuk kebijakan keamanan, standar, prosedur, penilaian risiko, kontrol akses, kriptografi, dan respons insiden.'],
+            ['name' => 'Pengembangan Aplikasi Berbasis Android', 'abbreviation' => 'PABA', 'description' => 'Mempelajari dasar-dasar hingga tingkat lanjut pengembangan aplikasi mobile untuk platform Android menggunakan bahasa pemrograman Java atau Kotlin dan Android Studio.'],
+            ['name' => 'Natural Language Processing', 'abbreviation' => 'NLP', 'description' => 'Mempelajari bagaimana komputer dapat memproses, memahami, menganalisis, dan menghasilkan bahasa manusia (teks dan ucapan) secara alami, termasuk teknik seperti tokenisasi, parsing, dan sentiment analysis.'],
+            ['name' => 'Organisasi Komputer', 'abbreviation' => 'ORKOM', 'description' => 'Pembahasan mendalam mengenai organisasi fungsional dari sistem komputer, termasuk arsitektur set instruksi (ISA), unit pemrosesan pusat (CPU), sistem memori, sistem I/O, dan interkoneksinya.'],
+            ['name' => 'Pengantar Akutansi', 'abbreviation' => 'PA', 'description' => 'Pengenalan konsep dasar, prinsip-prinsip, siklus akuntansi keuangan, dan penyusunan laporan keuangan dasar untuk entitas bisnis (mengacu pada ejaan "Akutansi" dari input).'],
+            ['name' => 'Pemrograman Berorientasi Obyek', 'abbreviation' => 'PBO', 'description' => 'Mempelajari konsep dan implementasi paradigma pemrograman berorientasi objek (OOP) seperti enkapsulasi, pewarisan, polimorfisme, menggunakan bahasa seperti Java, C++, atau Python.'],
+            ['name' => 'PCD-CV', 'abbreviation' => 'PCD-CV', 'description' => 'Mata kuliah yang mengintegrasikan Pengolahan Citra Digital (PCD) untuk manipulasi dan analisis gambar, dengan Computer Vision (CV) untuk interpretasi dan pemahaman konten visual oleh komputer.'],
+            ['name' => 'Pemodelan dan Simulasi', 'abbreviation' => 'PDS', 'description' => 'Mempelajari teknik membuat model matematika atau komputasi dari sistem nyata (fisik, bisnis, sosial) dan melakukan simulasi untuk analisis kinerja, prediksi, atau optimasi.'],
+            ['name' => 'Pemrograman Jaringan', 'abbreviation' => 'PJ', 'description' => 'Mempelajari pengembangan aplikasi yang dapat berkomunikasi melalui jaringan komputer menggunakan socket programming (TCP/IP, UDP) dan protokol jaringan lainnya.'],
+            ['name' => 'Pengantar Manajemen dan Bisnis', 'abbreviation' => 'PMB', 'description' => 'Memberikan pemahaman dasar mengenai fungsi-fungsi manajemen (perencanaan, pengorganisasian, pengarahan, pengendalian) dan konsep dasar dalam dunia bisnis serta lingkungan operasinya.'],
+            ['name' => 'Pemrograman Perangkat Mobile', 'abbreviation' => 'PPM', 'description' => 'Mempelajari konsep, arsitektur, dan teknik pengembangan aplikasi untuk berbagai platform perangkat mobile (Android, iOS, cross-platform) termasuk UI/UX dan manajemen data.'],
+            ['name' => 'Perencanaan Strategis Sistem Informasi', 'abbreviation' => 'PSSI', 'description' => 'Membahas proses penyelarasan strategi sistem informasi/teknologi informasi (SI/TI) dengan strategi bisnis organisasi untuk mencapai keunggulan kompetitif dan tujuan perusahaan.'],
+            ['name' => 'Pengantar Teknologi Informasi', 'abbreviation' => 'PTI', 'description' => 'Pengenalan konsep dasar teknologi informasi, meliputi sejarah perkembangan, perangkat keras (hardware), perangkat lunak (software), jaringan komputer, internet, basis data, dan dampaknya dalam masyarakat.'],
+            ['name' => 'Riset Operasi', 'abbreviation' => 'RO', 'description' => 'Aplikasi metode ilmiah dan teknik matematika (pemrograman linier, teori antrian, simulasi) untuk membantu pengambilan keputusan yang optimal dalam masalah operasional dan manajerial.'],
+            ['name' => 'Rekayasa Perangkat Lunak', 'abbreviation' => 'RPL', 'description' => 'Mempelajari pendekatan sistematis, disiplin, dan terukur untuk pengembangan, operasi, dan pemeliharaan perangkat lunak berkualitas tinggi, meliputi model proses, analisis, desain, pengujian, dan manajemen proyek.'],
+            ['name' => 'Rekayasa Sistem Informasi', 'abbreviation' => 'RSI', 'description' => 'Fokus pada penerapan prinsip-prinsip rekayasa dalam analisis, desain, pengembangan, implementasi, dan pengelolaan sistem informasi yang kompleks dalam suatu organisasi.'],
+            ['name' => 'Supply Chain Management', 'abbreviation' => 'SCM', 'description' => 'Mempelajari perencanaan, implementasi, dan pengendalian operasi rantai pasok secara efisien, meliputi aliran barang, informasi, dan keuangan dari pemasok hingga konsumen akhir.'],
+            ['name' => 'Struktur Data', 'abbreviation' => 'SD', 'description' => 'Mempelajari berbagai cara pengorganisasian, penyimpanan, dan manipulasi data dalam komputer (array, linked list, stack, queue, tree, graph) agar dapat diakses dan digunakan secara efisien.'],
+            ['name' => 'Sertifikasi Profesi', 'abbreviation' => 'SPRO', 'description' => 'Mata kuliah yang bertujuan mempersiapkan mahasiswa untuk mengikuti dan lulus ujian sertifikasi profesional di bidang teknologi informasi tertentu (misalnya Cisco, Oracle, Microsoft, CompTIA).'],
+            ['name' => 'Sistem Informasi Akuntansi', 'abbreviation' => 'SIA', 'description' => 'Mempelajari bagaimana sistem informasi digunakan untuk mengumpulkan, menyimpan, memproses, menganalisis, dan melaporkan informasi akuntansi guna mendukung pengambilan keputusan dan pengendalian internal.'],
+            ['name' => 'Sistem Logika Fuzzy', 'abbreviation' => 'SLF', 'description' => 'Pengenalan konsep logika fuzzy (kabur) sebagai perluasan dari logika Boolean, dan aplikasinya dalam pemodelan sistem yang mengandung ketidakpastian, ketidakjelasan, atau ambiguitas.'],
+            ['name' => 'Sistem Operasi', 'abbreviation' => 'SO', 'description' => 'Mempelajari konsep, struktur, fungsi dasar, dan komponen sistem operasi, termasuk manajemen proses, manajemen memori, sistem file, manajemen I/O, dan penjadwalan.'],
+            ['name' => 'Service Oriented Architecture', 'abbreviation' => 'SOA', 'description' => 'Mempelajari prinsip desain arsitektur perangkat lunak berbasis layanan (services) yang independen, dapat digunakan kembali (reusable), dan diintegrasikan untuk membangun sistem yang fleksibel dan modular.'],
+            ['name' => 'Statistika Dasar', 'abbreviation' => 'STATDAS', 'description' => 'Pengantar konsep dasar statistika deskriptif (penyajian data, ukuran pemusatan dan penyebaran) dan inferensial (estimasi, uji hipotesis) untuk analisis data.'],
+            ['name' => 'Teknologi Web', 'abbreviation' => 'TekWeb', 'description' => 'Mempelajari teknologi, bahasa pemrograman (HTML, CSS, JavaScript), dan framework yang digunakan dalam pengembangan aplikasi web, baik sisi klien (front-end) maupun sisi server (back-end).'],
+            ['name' => 'Teori Bahasa dan Automata', 'abbreviation' => 'TBA', 'description' => 'Mempelajari model matematika dari komputasi dan bahasa formal, termasuk finite automata, regular expression, context-free grammar, pushdown automata, dan mesin Turing.'],
+            ['name' => 'Teknologi Open Source', 'abbreviation' => 'TOS', 'description' => 'Pengenalan konsep, filosofi, lisensi, serta keuntungan dan tantangan penggunaan perangkat lunak open source (OSS) dalam berbagai solusi teknologi informasi.'],
+            ['name' => 'Virtual Reality', 'abbreviation' => 'VR', 'description' => 'Mempelajari teknologi, perangkat keras, perangkat lunak, teknik pengembangan, dan aplikasi realitas virtual (VR) untuk menciptakan pengalaman digital yang imersif dan interaktif.'],
+            ['name' => 'Machine Learning', 'abbreviation' => 'ML', 'description' => 'Pengantar konsep, algoritma (supervised, unsupervised, reinforcement learning), dan aplikasi machine learning untuk memungkinkan sistem komputer belajar dari data tanpa diprogram secara eksplisit.'],
+            ['name' => 'Knowledge Management', 'abbreviation' => 'KM', 'description' => 'Mempelajari strategi, proses, dan teknologi untuk menciptakan, menangkap, menyimpan, berbagi, dan memanfaatkan pengetahuan serta aset intelektual dalam suatu organisasi.'],
+            ['name' => 'Dasar Pemrograman', 'abbreviation' => 'DP', 'description' => 'Pengenalan fundamental konsep pemrograman komputer, termasuk variabel, tipe data, struktur kontrol (percabangan, perulangan), fungsi/prosedur, dan logika pemecahan masalah.'],
+            ['name' => 'Business Intelligence', 'abbreviation' => 'BIntel', 'description' => 'Mempelajari proses, teknologi, aplikasi, dan praktik untuk menganalisis data bisnis guna menghasilkan wawasan (insights) yang mendukung pengambilan keputusan strategis dan operasional.'],
+            ['name' => 'Sistem Informasi Manajemen', 'abbreviation' => 'SIM', 'description' => 'Membahas peran, komponen, dan pengembangan sistem informasi dalam mendukung fungsi manajerial (perencanaan, pengendalian, pengambilan keputusan) dan operasional dalam suatu organisasi.'],
+            ['name' => 'Pemrograman Game', 'abbreviation' => 'PG', 'description' => 'Mempelajari teknik, alat (game engine), bahasa pemrograman, dan prinsip desain yang digunakan dalam proses pengembangan permainan digital (video game) dari konsep hingga produk jadi.'],
+            ['name' => 'Routing & Switching', 'abbreviation' => 'R&S', 'description' => 'Fokus pada konsep, protokol (OSPF, EIGRP, STP), dan konfigurasi perangkat routing dan switching dalam jaringan komputer untuk memastikan pengiriman data yang efisien dan andal.'],
+            ['name' => 'Computer Vision', 'abbreviation' => 'CV', 'description' => 'Mempelajari bagaimana komputer dapat "melihat", memproses, menganalisis, dan menginterpretasikan informasi visual dari gambar atau video, termasuk deteksi objek, pengenalan wajah, dan segmentasi.'],
+            ['name' => 'Pemrograman Aplikasi Java', 'abbreviation' => 'PAJ', 'description' => 'Pengembangan berbagai jenis aplikasi (desktop, web, enterprise) menggunakan bahasa pemrograman Java dan ekosistemnya, termasuk framework dan library terkait.'],
+            ['name' => 'Pengantar Akuntansi', 'abbreviation' => 'PAK', 'description' => 'Pengenalan konsep dasar, prinsip-prinsip, siklus akuntansi keuangan, dan penyusunan laporan keuangan dasar untuk entitas bisnis (menggunakan ejaan standar "Akuntansi").'],
+
         ];
 
-        // Insert subjects into the database
-        foreach ($subjects as $subject) {
-            Subject::create($subject);
+        foreach ($subjectsData as $subject) {
+            Subject::firstOrCreate(
+                ['name' => $subject['name']], // Kunci untuk mencari data yang sudah ada
+                [ 
+                    'abbreviation' => $subject['abbreviation'],
+                    'description' => $subject['description']
+                ]
+            );
         }
     }
 }
