@@ -63,6 +63,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('questions/{id}/downvote', [QuestionController::class, 'downvoteQuestion']);
     Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
+    Route::post('answers/{id}/updatePartial', [AnswerController::class, 'updatePartial']);
 });
 Route::get('/search', [SearchController::class, 'search']);
 

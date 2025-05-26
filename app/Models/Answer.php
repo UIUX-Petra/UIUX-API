@@ -15,7 +15,8 @@ class Answer extends Model
         'answer',
         'image',
         'question_id',
-        'user_id'
+        'user_id',
+        'verified'
     ];
 
     protected $hidden = [

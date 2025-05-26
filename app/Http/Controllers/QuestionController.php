@@ -153,6 +153,7 @@ class QuestionController extends BaseController
                 'image' => $answer->image,
                 'answer' => $answer->answer,
                 'vote' => $answer->vote,
+                'verified' => $answer->verified,
                 'timestamp' => $answer->created_at,
                 'comments' => $answer->comment->map(function ($comment) {
                     return [
@@ -171,7 +172,6 @@ class QuestionController extends BaseController
                 'username' => $comment->user->username,
                 'comment' => $comment->comment,
                 'timestamp' => $comment->created_at,
-
             ];
         });
 
