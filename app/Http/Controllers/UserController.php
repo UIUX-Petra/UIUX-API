@@ -190,7 +190,7 @@ class UserController extends BaseController
     }
     public function getUserQuestions(string $userId)
     {
-        return $this->success('Successfully retrieved data', $this->model->with(['question.answer'])->findOrFail($userId));
+        return $this->success('Successfully retrieved data', $this->model->with(['question.answer', 'question.groupQuestion.subject'])->findOrFail($userId));
     }
 
     public function editProfileUser(Request $request)
