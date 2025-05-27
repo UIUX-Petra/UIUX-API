@@ -24,9 +24,9 @@ class QuestionController extends BaseController
         $this->tagsQuestionController = new GroupQuestionController(new GroupQuestion());
     }
 
-    public function getUserQuestionsWithCount($userId)
+    public function getUserQuestionsWithCount($email)
     {
-        $questions = $this->model->where('user_id', $userId)
+        $questions = $this->model->where('email', $email)
             ->orderBy('created_at', 'desc')
             ->get();
 
