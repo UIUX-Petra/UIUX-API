@@ -24,9 +24,9 @@ class QuestionController extends BaseController
         $this->tagsQuestionController = new GroupQuestionController(new GroupQuestion());
     }
 
-    public function getUserQuestionsWithCount($userId)
+    public function getUserQuestionsWithCount($email)
     {
-        $questions = $this->model->where('user_id', $userId)
+        $questions = $this->model->where('email', $email)
             ->orderBy('created_at', 'desc')
             ->get();
 
@@ -150,6 +150,7 @@ class QuestionController extends BaseController
             return [
                 'id' => $answer->id,
                 'username' => $answer->user->username,
+                'user_image' => $answer->user->image,
                 'image' => $answer->image,
                 'answer' => $answer->answer,
                 'vote' => $answer->vote,
@@ -170,6 +171,7 @@ class QuestionController extends BaseController
             return [
                 'id' => $comment->id,
                 'username' => $comment->user->username,
+                'email' => $comment->user->email,
                 'comment' => $comment->comment,
                 'timestamp' => $comment->created_at,
             ];
