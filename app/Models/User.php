@@ -87,7 +87,7 @@ class User extends Authenticatable implements MustVerifyEmail
     }
     public function userAchievement()
     {
-        return $this->hasMany(userAchievement::class, 'user_id');
+        return $this->hasMany(UserAchievement::class, 'user_id');
     }
     public function answer()
     {

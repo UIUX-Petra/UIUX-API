@@ -39,7 +39,7 @@ class Achievement extends Model
         return ['userAchievement'];
     }
     public function userAchievement(){
-        return $this->hasMany(userAchievement::class, 'achievement_id');
+        return $this->hasMany(UserAchievement::class, 'achievement_id');
     }
     
 }
