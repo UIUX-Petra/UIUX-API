@@ -52,7 +52,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
 
     Route::apiResource('users', UserController::class);
     Route::post('/users/{email}/follow', [UserController::class, 'follow']);
-    Route::get('/users/{user_id}/questions', [UserController::class, 'getUserQuestions']);
+    Route::get('/users/{userId}/questions', [UserController::class, 'getUserQuestions']);
     Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
     Route::get('/userTags', [UserController::class, 'getUserTags']);
 
