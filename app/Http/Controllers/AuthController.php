@@ -61,7 +61,7 @@ class AuthController extends BaseController
         $user = $this->userController->create($validated);
 
         // Send email verification link
-        $user->sendEmailVerificationNotification();
+        // $user->sendEmailVerificationNotification();
 
         Log::info($user);
         return $this->success('User registered successfully.', HttpResponseCode::HTTP_CREATED);
