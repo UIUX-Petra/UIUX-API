@@ -72,7 +72,7 @@ class SearchController extends Controller
                 ->get()
                 ->map(function ($item) {
                     $item->type = 'subject';
-                    $item->url = '/subjects/' . $item->id;
+                    $item->url = '/popular?sort_by=latest&filter_tag=' . urlencode($item->name);
                     return $item;
                 });
         }
