@@ -82,7 +82,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'question.comment',
             'question.groupQuestion.subject',
             'following',
-            'followers'
+            'followers',
+            'searchedHistory'
         ];
     }
     public function userAchievement()
@@ -115,6 +116,10 @@ class User extends Authenticatable implements MustVerifyEmail
     public function savedQuestions()
     {
         return $this->belongsToMany(Question::class, 'saved_questions', 'user_id', 'question_id')
-                    ->withTimestamps();
+            ->withTimestamps();
+    }
+    public function searchedHistory()
+    {
+        return $this->morphMany(History::class, 'searched');
     }
 }

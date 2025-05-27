@@ -36,11 +36,16 @@ class Subject extends Model
     
     public function relations(){
         return [
-            'groupQuestion'
+            'groupQuestion',
+            'searchedHistory'
         ];
     }
 
     public function groupQuestion(){
         return $this->hasMany(GroupQuestion::class, 'tag_id');
+    }
+        public function searchedHistory()
+    {
+        return $this->morphMany(History::class, 'searched');
     }
 }

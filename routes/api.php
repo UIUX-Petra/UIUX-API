@@ -3,6 +3,7 @@
 use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
+use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuestionController;
@@ -67,6 +68,9 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/answers-paginated', [AnswerController::class, 'getAnswersPaginated']);
 });
 Route::get('/search', [SearchController::class, 'search']);
+
+// Route::post('/history', [HistoryController::class, 'addHistory']);
+Route::apiResource('histories', HistoryController::class);
 
 Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 

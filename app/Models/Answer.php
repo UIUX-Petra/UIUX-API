@@ -44,7 +44,7 @@ class Answer extends Model
 
     public function relations()
     {
-        return ['user', 'question', 'comment'];
+        return ['user', 'question', 'comment', 'searchedHistory'];
     }
 
     public function user()
@@ -62,5 +62,9 @@ class Answer extends Model
     public function votes()
     {
         return $this->morphMany(Vote::class, 'votable');
+    }
+    public function searchedHistory()
+    {
+        return $this->morphMany(History::class, 'searched');
     }
 }

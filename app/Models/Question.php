@@ -56,13 +56,14 @@ class Question extends Model
         ];
     }
 
-     public function getDefaultRelations()
+    public function getDefaultRelations()
     {
         return [
             "answer",
             "comment",
             "user",
             "groupQuestion.subject",
+            "searchedHistory"
         ];
     }
 
@@ -99,6 +100,10 @@ class Question extends Model
     public function savedByUsers()
     {
         return $this->belongsToMany(User::class, 'saved_questions', 'question_id', 'user_id')
-                    ->withTimestamps();
+            ->withTimestamps();
+    }
+    public function searchedHistory()
+    {
+        return $this->morphMany(History::class, 'searched');
     }
 }

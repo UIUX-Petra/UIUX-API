@@ -31,6 +31,7 @@ class SearchController extends Controller
         // Search Questions
         if ($context === 'all' || $context === 'questions') {
             $questionsQuery = Question::where('title', 'LIKE', "%{$query}%")
+                ->orWhere('question', 'LIKE', "%{$query}%")
                 ->with([
                     'user:id,username',
                     'groupQuestion.subject:id,name'
