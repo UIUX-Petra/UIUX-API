@@ -24,7 +24,7 @@ class GroupQuestion extends Model
     }
     public function subject()
     {
-        return $this->belongsTo(subject::class, 'tag_id');
+        return $this->belongsTo(Subject::class, 'tag_id');
     }
     public function question()
     {
