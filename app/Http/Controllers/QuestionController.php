@@ -150,6 +150,7 @@ class QuestionController extends BaseController
             return [
                 'id' => $answer->id,
                 'username' => $answer->user->username,
+                'user_image' => $answer->user->image,
                 'image' => $answer->image,
                 'answer' => $answer->answer,
                 'vote' => $answer->vote,
@@ -170,6 +171,7 @@ class QuestionController extends BaseController
             return [
                 'id' => $comment->id,
                 'username' => $comment->user->username,
+                'email' => $comment->user->email,
                 'comment' => $comment->comment,
                 'timestamp' => $comment->created_at,
             ];
