@@ -69,8 +69,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
 });
 Route::get('/search', [SearchController::class, 'search']);
 
-// Route::post('/history', [HistoryController::class, 'addHistory']);
 Route::apiResource('histories', HistoryController::class);
+Route::get('/getDetailedSearchHistory', [HistoryController::class, 'getDetailedSearchHistory']);
 
 Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
