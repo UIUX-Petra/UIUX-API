@@ -46,7 +46,7 @@ class SearchController extends Controller
                 $mappedItem->id = $item->id;
                 $mappedItem->title = $item->title;
                 $mappedItem->type = 'question';
-                $mappedItem->url = 'uiux/viewAnswers/' . $item->id;
+                $mappedItem->url = '/uiux/viewAnswers/' . $item->id;
 
                 $mappedItem->author_username = null;
                 if ($item->relationLoaded('user') && $item->user) {
@@ -73,7 +73,7 @@ class SearchController extends Controller
                 ->get()
                 ->map(function ($item) {
                     $item->type = 'subject';
-                    $item->url = 'uiux/popular?sort_by=latest&filter_tag=' . urlencode($item->name);
+                    $item->url = '/uiux/popular?sort_by=latest&filter_tag=' . urlencode($item->name);
                     return $item;
                 });
         }
@@ -87,7 +87,7 @@ class SearchController extends Controller
                 ->get()
                 ->map(function ($item) {
                     $item->type = 'user';
-                    $item->url = 'uiux/viewUser/' . $item->email;
+                    $item->url = '/uiux/viewUser/' . $item->email;
                     return $item;
                 });
         }
