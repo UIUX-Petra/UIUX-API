@@ -42,6 +42,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::apiResource('questions', QuestionController::class);
     Route::post('questions/{id}/updatePartial', [QuestionController::class, 'updatePartial']);
     Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
+    Route::get('/questions-paginated-home', [QuestionController::class, 'getQuestionPaginatedHome']);
 
     Route::apiResource('answers', AnswerController::class);
     Route::post('answers/{id}/updatePartial', [AnswerController::class, 'updatePartial']);
