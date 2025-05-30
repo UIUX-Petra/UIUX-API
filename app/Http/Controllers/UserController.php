@@ -60,7 +60,20 @@ class UserController extends BaseController
     {
         Log::info('Searching for user by email', ['email' => $email]);
 
-        $userDiCari = $this->model::where('email', $email)->with($this->model->relations())->first();
+        $userDiCari = $this->model::where('email', $email)
+            ->with(array_merge(
+                $this->model->relations(),
+                [
+                    'histories.searched' => function ($morphTo) {
+                        $morphTo->morphWith([
+                            \App\Models\Question::class => ['user:id,username'],
+                            \App\Models\User::class => [],
+                            \App\Models\Subject::class => [],
+                        ]);
+                    }
+                ]
+            ))
+            ->first();
 
         if ($userDiCari) {
             Log::info('User found', ['user_id' => $userDiCari->id, 'email' => $email]);
@@ -70,6 +83,7 @@ class UserController extends BaseController
 
         return $this->success('Successfully retrieved data', $userDiCari);
     }
+
 
     public function getUserWithRecommendation(Request $request)
     {

@@ -11,7 +11,6 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Auth\Notifications\VerifyEmail;
-
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -83,7 +82,8 @@ class User extends Authenticatable implements MustVerifyEmail
             'question.groupQuestion.subject',
             'following',
             'followers',
-            'searchedHistory'
+            'searchedHistory',
+            'histories'
         ];
     }
     public function userAchievement()
@@ -118,8 +118,12 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->belongsToMany(Question::class, 'saved_questions', 'user_id', 'question_id')
             ->withTimestamps();
     }
-    public function searchedHistory()
+    public function searchedHistory() // user sebagai object yang dicari
     {
         return $this->morphMany(History::class, 'searched');
+    }
+    public function histories()
+    {
+        return $this->hasMany(History::class); // user -> siapa yang mencari
     }
 }
