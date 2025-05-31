@@ -112,4 +112,7 @@ return [
 
     'password_timeout' => env('AUTH_PASSWORD_TIMEOUT', 10800),
 
+    'verification' => [
+        'pending_expire' => env('PENDING_USER_VERIFICATION_EXPIRE_HOURS', 24),
+    ],
 ];

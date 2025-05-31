@@ -55,6 +55,8 @@ class HttpResponseCode
     public const HTTP_NOT_ACCEPTABLE = 406;
 
     public const HTTP_CONFLICT = 409;
+    
+    public const HTTP_GONE = 410;
 
     public const HTTP_UNSUPPORTED_MEDIA_TYPE = 415;
 

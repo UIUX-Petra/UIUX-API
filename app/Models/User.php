@@ -36,7 +36,8 @@ class User extends Authenticatable implements MustVerifyEmail
      * @var array<int, string>
      */
     protected $hidden = [
-        'updated_at'
+        'updated_at',
+        'password',
     ];
 
     public static function validationRules()

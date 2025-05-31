@@ -13,21 +13,15 @@ use App\Http\Controllers\SubjectController;
 // Route::get('/', function () {
 //     return view('welcome');
 // });
-Route::post('/login', [AuthController::class, 'login']);
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/manualLogin', [AuthController::class, 'manualLogin']);
+Route::post('/auth/socialite', [AuthController::class, 'socialiteLogin']);
 
-// Route::get('/email/verify', function () {
-//     return view('auth.verify-email');
-// })->middleware('auth')->name('verification.notice');
+Route::get('/email/verify-pending/{token}', [AuthController::class, 'verifyPendingEmail'])->name('api.email.verify-pending');
+Route::post('/email/resend-pending-verification', [AuthController::class, 'resendPendingVerification']);
 
-Route::get('/email/verify/{id}/{hash}', [AuthController::class, 'verifyEmail'])
-    ->name('verification.verify')
-    ->middleware('signed');
-
-Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail'])
-    ->name('verification.send')
-    ->middleware(['auth', 'throttle:6,1']);
+Route::get('/email/verify/{user}/{hash}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
+Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail'])->name('verification.send');
 
 Route::get('/userWithRecommendation', [UserController::class, 'getUserWithRecommendation']);
 Route::get('/user-questions/{userId}', [QuestionController::class, 'getUserQuestionsWithCount']);
@@ -67,6 +61,8 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
 
     Route::get('/answers-paginated', [AnswerController::class, 'getAnswersPaginated']);
+
+    Route::post('/logout', [AuthController::class, 'logout']);
 });
 Route::get('/search', [SearchController::class, 'search']);
 
