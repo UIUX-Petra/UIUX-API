@@ -105,7 +105,6 @@ class AuthController extends BaseController
             }
 
             return $this->success('Account exists via social login. Please check your email to verify and set your password.', null, HttpResponseCode::HTTP_CREATED);
-
         } else {
             if (User::where('username', $inputUsername)->exists()) {
                 return $this->error('This username is already taken by a verified account. Please choose a different username.', HttpResponseCode::HTTP_CONFLICT);
@@ -136,7 +135,6 @@ class AuthController extends BaseController
                         Log::error('Failed to re-send new registration verification email: ' . $e->getMessage() . ' for user: ' . $pendingRecord->email);
                         return $this->error('Registration was pending, but there was an issue re-sending the verification email. Please contact support.', HttpResponseCode::HTTP_INTERNAL_SERVER_ERROR);
                     }
-
                 } else {
                     $pendingRecord->delete();
                 }
@@ -194,7 +192,6 @@ class AuthController extends BaseController
             }
             $user->save();
             $message = 'Password set successfully! You can now login with your new password.';
-
         } else {
             if (User::where('email', $pendingUser->email)->exists() || User::where('username', $pendingUser->username)->exists()) {
                 $pendingUser->delete();

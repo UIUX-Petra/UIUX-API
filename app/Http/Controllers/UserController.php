@@ -204,7 +204,7 @@ class UserController extends BaseController
     }
     public function getUserQuestions(string $id)
     {
-        return $this->success('Successfully retrieved data', $this->model->with(['question.answer'])->findOrFail($id));
+        return $this->success('Successfully retrieved data', $this->model->with(['question.answer', 'histories'])->findOrFail($id));
     }
 
     public function editProfileUser(Request $request)
