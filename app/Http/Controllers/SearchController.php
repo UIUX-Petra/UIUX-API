@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Question;
-use App\Models\Subject;
 use App\Models\User;
+use App\Models\Subject;
+use App\Models\Question;
 use App\Utils\HttpResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class SearchController extends Controller
 {
