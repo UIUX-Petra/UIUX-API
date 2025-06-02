@@ -23,9 +23,6 @@ class AuthController extends BaseController
     public function register(Request $request)
     {
         if (!env('API_SECRET') || $request->input('secret') !== env('API_SECRET')) {
-            Log::info(env('API_SECRET'));
-            Log::info($request->input('secret'));
-
             return $this->error('Please Regist From ' . env('APP_NAME') . ' Website!', HttpResponseCode::HTTP_UNAUTHORIZED);
         }
 
