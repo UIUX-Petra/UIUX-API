@@ -8,6 +8,7 @@ use App\Models\History;
 use App\Models\Subject;
 use App\Models\Question;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Log;
 
 class HistoryController extends BaseController
 {
@@ -27,7 +28,7 @@ class HistoryController extends BaseController
 
         return parent::store($request);
     }
-    
+
     public function getDetailedSearchHistory(Request $request)
     {
         $userId = $this->userController->getUserId($request->email);
@@ -87,5 +88,16 @@ class HistoryController extends BaseController
         })->filter()->values();
 
         return response()->json(['data' => $result]);
+    }
+    public function clearHistory($email)
+    {
+        $userResponse = $this->userController->getByEmail($email);
+        $user = $userResponse->getData(true);
+
+        if (!$user['success'] && !$user['data']) {
+            return $this->error("Failed to fetch User's Histories", 500, ['email' => $email]);
+        }
+        History::where('user_id', $user['data']['id'])->delete();
+        return $this->success("History Cleared", null, 200);
     }
 }
