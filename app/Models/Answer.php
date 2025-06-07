@@ -17,7 +17,8 @@ class Answer extends Model
         'image',
         'question_id',
         'user_id',
-        'verified'
+        'verified',
+        
     ];
 
     protected $hidden = [
@@ -45,7 +46,7 @@ class Answer extends Model
 
     public function relations()
     {
-        return ['user', 'question', 'comment'];
+        return ['user', 'question', 'comment', 'user.histories'];
     }
 
     public function user()
