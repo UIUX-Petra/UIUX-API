@@ -188,6 +188,7 @@ class QuestionController extends BaseController
             return [
                 'id' => $answer->id,
                 'username' => $answer->user->username,
+                'email' => $answer->user->email,
                 'user_image' => $answer->user->image,
                 'image' => $answer->image,
                 'answer' => $answer->answer,
@@ -239,7 +240,7 @@ class QuestionController extends BaseController
         } catch (\InvalidArgumentException $e) {
             return $this->error($e->getMessage(), 400);
         } catch (\Exception $e) {
-            \Log::error("Error upvoting question {$id} by user {$userId}: " . $e->getMessage(), ['exception' => $e]);
+            Log::error("Error upvoting question {$id} by user {$userId}: " . $e->getMessage(), ['exception' => $e]);
             return $this->error('An error occurred while processing your vote.');
         }
     }
@@ -257,7 +258,7 @@ class QuestionController extends BaseController
         } catch (\InvalidArgumentException $e) {
             return $this->error($e->getMessage(), 400);
         } catch (\Exception $e) {
-            \Log::error("Error downvoting question {$id} by user {$userId}: " . $e->getMessage(), ['exception' => $e]);
+            Log::error("Error downvoting question {$id} by user {$userId}: " . $e->getMessage(), ['exception' => $e]);
             return $this->error('An error occurred while processing your vote.');
         }
     }
