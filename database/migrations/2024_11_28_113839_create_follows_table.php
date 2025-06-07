@@ -12,13 +12,12 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('follows', function (Blueprint $table) {
-            $table->uuid('id')->primary();
-            
-            $table->unique(['follower_id','followed_id']); // hanya bisa follow orang 1x
-
+            $table->uuid('id')->primary();            
             $table->foreignUuid('follower_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreignUuid('followed_id')->references('id')->on('users')->onDelete('cascade');
             
+            $table->unique(['follower_id','followed_id']);
+            $table->index('followed_id');
             $table->timestamps();
         });
     }

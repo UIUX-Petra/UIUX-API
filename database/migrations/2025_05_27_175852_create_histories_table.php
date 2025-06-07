@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('histories', function (Blueprint $table) {
             $table->uuid('id')->primary();
-            $table->uuidMorphs('searched'); // akan membuat searched_id dan searched_type
+            $table->uuidMorphs('searched');
             $table->uuid('user_id');
             $table->timestamps();
 

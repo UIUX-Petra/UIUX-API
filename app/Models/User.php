@@ -4,6 +4,7 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 
+use App\Traits\HasComments;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,7 +15,7 @@ use Illuminate\Auth\Notifications\VerifyEmail;
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasUuids, HasFactory, Notifiable, HasApiTokens;
+    use HasUuids, HasFactory, Notifiable, HasApiTokens, HasComments;
 
     /**
      * The attributes that are mass assignable.
@@ -95,10 +96,6 @@ class User extends Authenticatable implements MustVerifyEmail
     public function answer()
     {
         return $this->hasMany(Answer::class, 'user_id');
-    }
-    public function comment()
-    {
-        return $this->hasMany(Comment::class, 'user_id');
     }
     public function question()
     {

@@ -74,7 +74,6 @@ class AuthController extends BaseController
                         $pendingRecord->save();
 
                         Mail::to($pendingRecord->email)->send(new VerifyPendingRegistrationMail($pendingRecord, true));
-                        Log::info('Re-sent set password verification email for existing pending record: ' . $pendingRecord->email);
                         return $this->success('A password setup for this email was already pending. We have re-sent the verification email. Please check your inbox (and spam folder).', null, HttpResponseCode::HTTP_OK); // Use HTTP_OK as it's an update to an existing process
 
                     } catch (\Exception $e) {
@@ -127,8 +126,7 @@ class AuthController extends BaseController
                         $pendingRecord->existing_user_id = null;
                         $pendingRecord->save();
 
-                        Mail::to($pendingRecord->email)->send(new VerifyPendingRegistrationMail($pendingRecord, false)); // false for 'isSettingPassword'
-                        Log::info('Re-sent new registration verification email for existing pending record: ' . $pendingRecord->email);
+                        Mail::to($pendingRecord->email)->send(new VerifyPendingRegistrationMail($pendingRecord, false));
                         return $this->success('A registration was already pending for this email or username. We have updated it with your latest information and re-sent the verification email. Please check your inbox (and spam folder).', null, HttpResponseCode::HTTP_OK); // OK for update
 
                     } catch (\Exception $e) {

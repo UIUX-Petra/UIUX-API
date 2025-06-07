@@ -58,8 +58,6 @@ class UserController extends BaseController
 
     public function getByEmail(string $email)
     {
-        Log::info('Searching for user by email', ['email' => $email]);
-
         $userDiCari = $this->model::where('email', $email)
             ->with(array_merge(
                 $this->model->relations(),
@@ -209,7 +207,6 @@ class UserController extends BaseController
 
     public function editProfileUser(Request $request)
     {
-        Log::info($request);
         $user = $this->model::find($request->user_id);
 
         if (!$user) {
@@ -236,7 +233,6 @@ class UserController extends BaseController
     // buat hitung satu user punya berapa post dengan suatu tag
     public function getUserTags(Request $request)
     {
-        Log::info('Fetching user tags for email: ' . $request->email);
         try {
             $currUser = $this->model::where('email', $request->email)
                 ->with([
@@ -245,7 +241,6 @@ class UserController extends BaseController
                 ->first();
 
             if ($currUser) {
-                Log::info('Successfully retrieved user data for email: ' . $request->email);
                 return $this->success('Successfully retrieved data', $currUser);
             } else {
                 Log::warning('User not found for email: ' . $request->email);
@@ -391,7 +386,6 @@ class UserController extends BaseController
             ->with('groupQuestion.subject')
             ->withCount('comment')
             ->get();
-        Log::info("messageTES" . $savedQuestions);
         return $this->success('Successfully retrieved saved questions', $savedQuestions, HttpResponseCode::HTTP_OK);
     }
 }

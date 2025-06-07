@@ -2,12 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Answer;
+use App\Models\Question;
 use App\Models\User;
 use App\Models\Comment;
+use App\Utils\HttpResponseCode;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\BaseController;
 use App\Http\Controllers\UserController;
+use Validator;
 
 class CommentController extends BaseController
 {
@@ -20,24 +24,49 @@ class CommentController extends BaseController
 
     public function store(Request $request)
     {
-        $userId = $this->userController->getUserId($request->email);
-        $request->merge(['user_id' => $userId]);
-        $request->request->remove('email');
+        $validator = Validator::make(
+            $request->all(),
+            $this->model->validationRules() + ['email' => 'required|email|exists:users,email'],
+            $this->model->validationMessages() + ['email.required' => 'The user email is required.']
+        );
 
-        $response = parent::store($request);
-        $responseData = $response->getData(true);
-
-        if (isset($responseData['data']['id'])) {
-            $comment = $this->model::with(['user'])->find($responseData['data']['id']);
-            $comment = $comment->makeVisible(['created_at']);
-            $responseData['data']['comment'] = $comment;
-            unset($responseData['data']['id']);
-            unset($responseData['data']['question_id']);
-            unset($responseData['data']['answer_id']);
-            unset($responseData['data']['user_id']);
-
-            return response()->json($responseData, $responseData['code']);
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), HttpResponseCode::HTTP_NOT_ACCEPTABLE);
         }
-        return $response;
+
+        $commentableType = $request->input('commentable_type');
+        $commentableId = $request->input('commentable_id');
+
+        $modelMap = [
+            'question' => Question::class,
+            'answer' => Answer::class,
+        ];
+
+        $parentModelClass = $modelMap[$commentableType] ?? null;
+        if (!$parentModelClass) {
+            return $this->error('Invalid commentable_type provided.', HttpResponseCode::HTTP_BAD_REQUEST);
+        }
+
+        $parent = $parentModelClass::find($commentableId);
+
+        if (!$parent) {
+            return $this->error(ucfirst($commentableType) . ' not found.', HttpResponseCode::HTTP_NOT_FOUND);
+        }
+        $userId = $this->userController->getUserId($request->email);
+        $comment = $parent->comment()->create([
+            'comment' => $request->input('comment'),
+            'user_id' => $userId,
+        ]);
+        $comment->load('user');
+        $comment->makeVisible(['created_at']);
+        $responseData = [
+            'data' => [
+                'comment' => $comment
+            ],
+            'code' => HttpResponseCode::HTTP_OK,
+            'message' => 'Data successfully saved to model',
+        ];
+
+        return response()->json($responseData, $responseData['code']);
     }
 }

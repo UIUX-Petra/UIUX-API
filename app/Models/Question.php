@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Traits\HasComments;
 use App\Traits\HasViews;
 use App\Traits\HasVotes;
 use Illuminate\Database\Eloquent\Model;
@@ -9,7 +10,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Question extends Model
 {
-    use HasUuids, HasVotes, HasViews;
+    use HasUuids, HasVotes, HasViews, HasComments;
     protected $fillable = [
         'vote',
         'title',
@@ -72,11 +73,6 @@ class Question extends Model
         return $this->hasMany(Answer::class, 'question_id');
     }
 
-    public function comment()
-    {
-        return $this->hasMany(Comment::class, 'question_id');
-    }
-
     public function user()
     {
         return $this->belongsTo(User::class, 'user_id');
@@ -85,16 +81,6 @@ class Question extends Model
     public function groupQuestion()
     {
         return $this->hasMany(GroupQuestion::class, 'question_id');
-    }
-
-    public function votes()
-    {
-        return $this->morphMany(Vote::class, 'votable');
-    }
-
-    public function views()
-    {
-        return $this->morphMany(View::class, 'viewable');
     }
 
     public function savedByUsers()

@@ -32,13 +32,14 @@ class CommentSeeder extends Seeder
             $isForQuestion = random_int(0, 1);
             $questionId = $isForQuestion ? $questions->random()->id : null;
             $answerId = !$isForQuestion ? $answers->random()->id : null;
+            $id = $isForQuestion ? $questionId : $answerId;
 
             Comment::create([
                 'id' => Str::uuid(),
                 'user_id' => $user->id,
-                'question_id' => $questionId,
-                'answer_id' => $answerId,
-                'comment' => fake()->sentence(), // Using Laravel's fake data generator
+                'commentable_id' => $id,
+                'commentable_type' => $isForQuestion ? Question::class : Answer::class,
+                'comment' => fake()->sentence(),
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);

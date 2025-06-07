@@ -20,7 +20,6 @@ class GroupQuestionController extends BaseController
     public function store(Request $request)
     { //multi-store
         $data = $request->only($this->model->getFillable());
-        Log::info($request);
         $rel['question_id'] = $data['question_id'];
 
         foreach ($data['tag_id'] as $subsID){

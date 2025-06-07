@@ -13,7 +13,19 @@ class Vote extends Model
     public const TYPE_UPVOTE = 1;
     public const TYPE_DOWNVOTE = -1;
 
-    protected $fillable = ['user_id', 'votable_id', 'votable_type', 'type'];
+    protected $fillable = [
+        'user_id',
+        'votable_id',
+        'votable_type',
+        'type'
+    ];
+
+    protected $hidden = [
+        'updated_at',
+        'created_at',
+        'votable_id',
+        'votable_type'
+    ];
 
     public function votable()
     {

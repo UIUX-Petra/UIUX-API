@@ -4,7 +4,6 @@ namespace App\Traits;
 
 use App\Models\Vote;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 trait HasVotes
 {

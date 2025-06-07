@@ -17,6 +17,7 @@ return new class extends Migration
             $table->uuid('achievement_id');
             $table->timestamps();
 
+            $table->unique(['user_id', 'achievement_id']);
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->foreign('achievement_id')->references('id')->on('achievements')->onDelete('cascade');
         });

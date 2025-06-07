@@ -2,8 +2,14 @@
 
 namespace App\Traits;
 
+use App\Models\View;
+
 trait HasViews
 {
+    public function views()
+    {
+        return $this->morphMany(View::class, 'viewable');
+    }
     public function hasViewed($userId)
     {
         return $this->views()->where("user_id", $userId)->exists();

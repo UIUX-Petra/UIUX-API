@@ -14,14 +14,13 @@ return new class extends Migration
         Schema::create('comments', function (Blueprint $table) {
             $table->uuid('id')->primary();
             $table->uuid('user_id');
-            $table->uuid('question_id')->nullable();
-            $table->uuid('answer_id')->nullable();
+            $table->uuid('commentable_id');
+            $table->string('commentable_type');
             $table->text('comment');
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
-            $table->foreign('question_id')->references('id')->on('questions')->onDelete('cascade');
-            $table->foreign('answer_id')->references('id')->on('answers')->onDelete('cascade');
+            $table->index(['commentable_id', 'commentable_type']);
         });
     }
 
