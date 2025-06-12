@@ -15,10 +15,12 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->uuid('tag_id');
             $table->uuid('question_id');
+            $table->boolean('is_recommended')->default(false);
             $table->timestamps();
 
             $table->foreign('tag_id')->references('id')->on('tags')->onDelete('cascade');
             $table->foreign('question_id')->references('id')->on('questions')->onDelete('cascade');
+            $table->index(['question_id', 'tag_id']);
         });
     }
 
