@@ -12,6 +12,10 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Illuminate\Auth\Notifications\VerifyEmail;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+
+
 class User extends Authenticatable implements MustVerifyEmail
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
@@ -124,5 +128,16 @@ class User extends Authenticatable implements MustVerifyEmail
     public function histories()
     {
         return $this->hasMany(History::class); // user -> siapa yang mencari
+    }
+
+
+    public function reports(): HasMany
+    {
+        return $this->hasMany(Report::class);
+    }
+
+    public function blocks(): HasMany
+    {
+        return $this->hasMany(Block::class, 'blocked_user_id');
     }
 }

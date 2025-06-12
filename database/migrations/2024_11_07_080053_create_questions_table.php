@@ -18,12 +18,14 @@ return new class extends Migration {
             $table->integer('vote')->default(0);
             $table->integer('view')->default(0);
             $table->uuid('user_id');
+            $table->integer('report')->default(0);
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->index('user_id');
             $table->index('vote');
             $table->index('view');
+            $table->index('report');
         });
     }
 

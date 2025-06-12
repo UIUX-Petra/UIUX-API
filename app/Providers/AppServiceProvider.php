@@ -31,7 +31,7 @@ class AppServiceProvider extends ServiceProvider
 
         Relation::morphMap([
             'user' => \App\Models\User::class,
-            'question' => \App\Models\Question::class,
+            // 'question' => \App\Models\Question::class,
             'subject' => \App\Models\Subject::class,
         ]);
     }

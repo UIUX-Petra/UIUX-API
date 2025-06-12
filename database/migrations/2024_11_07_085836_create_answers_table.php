@@ -19,12 +19,14 @@ return new class extends Migration
             $table->boolean('verified')->default(0);
             $table->uuid('question_id');
             $table->uuid('user_id');
+            $table->integer('report')->default(0);
             $table->timestamps();
 
             $table->foreign('question_id')->references('id')->on('questions')->onDelete('cascade');
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->index('question_id');
             $table->index('user_id');
+            $table->index('report');
         });
     }
 

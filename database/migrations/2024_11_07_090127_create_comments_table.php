@@ -17,9 +17,11 @@ return new class extends Migration
             $table->uuid('commentable_id');
             $table->string('commentable_type');
             $table->text('comment');
+            $table->integer('report')->default(0);
             $table->timestamps();
 
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
+            $table->index('report');
             $table->index(['commentable_id', 'commentable_type']);
         });
     }

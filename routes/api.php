@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\Admin\AuthController as AdminAuthController;
+use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
@@ -74,3 +76,38 @@ Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
 Route::get('/getLeaderboardByTag/{id}', [UserController::class, 'getLeaderboardByTag']);
 Route::get('/getMostViewed/{email}', [UserController::class, 'getMostViewed']);
+
+// === ADMIN ==== //
+Route::middleware(['auth:sanctum', 'is.admin']) // Terapkan middleware otentikasi & pengecekan role admin
+    ->prefix('admin')                      // Memberi awalan URL '/api/admin/...'
+    ->name('admin.')                       // Memberi awalan nama rute 'admin.' (opsional, tapi bagus)
+    ->group(function () {
+
+        // Contoh menggunakan route resource untuk CRUD user
+        // URL yang akan dihasilkan: GET /api/admin/users, POST /api/admin/users, dll.
+        Route::apiResource('users', UserController::class);
+
+        // Contoh rute lain untuk admin
+        // Route::get('/dashboard-stats', [DashboardController::class, 'getStats']);
+        // Route::post('/settings', [SettingsController::class, 'update']);
+    });
+// routes/api.php
+
+// ...
+
+// ==========================
+// GRUP ROUTE UNTUK ADMIN API
+// ==========================
+Route::prefix('admin')->group(function () {
+
+    Route::post('/auth/socialite', [AdminAuthController::class, 'socialiteLogin']);
+        Route::get('/reports', [ReportController::class, 'index']);
+
+    Route::middleware(['auth:sanctum', 'abilities:role:admin'])->group(function () {
+        Route::post('/logout', [AdminAuthController::class, 'logout']);
+        Route::get('/me', [AdminAuthController::class, 'me']);
+
+        // Tambahkan route admin lain yang terproteksi di sini
+        // Contoh: Route::get('/reports', [ReportController::class, 'index']);
+    });
+});

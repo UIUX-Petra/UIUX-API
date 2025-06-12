@@ -3,14 +3,15 @@
 namespace App\Models;
 
 use App\Traits\HasComments;
+use App\Traits\HasReports;
 use App\Traits\HasVotes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Answer extends Model
 {
-    use HasUuids, HasVotes, HasComments;
-
+    use HasUuids, HasVotes, HasComments,HasReports;
+    
     protected $fillable = [
         'vote',
         'answer',

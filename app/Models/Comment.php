@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use App\Traits\HasReports;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 
 class Comment extends Model
 {
-    use HasUuids;
+    use HasUuids, HasReports;
 
     protected $fillable = [
         'user_id',

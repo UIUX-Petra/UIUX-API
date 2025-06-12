@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\HasComments;
+use App\Traits\HasReports;
 use App\Traits\HasViews;
 use App\Traits\HasVotes;
 use Illuminate\Database\Eloquent\Model;
@@ -10,7 +11,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 
 class Question extends Model
 {
-    use HasUuids, HasVotes, HasViews, HasComments;
+    use HasUuids, HasVotes, HasViews, HasComments, HasReports;
     protected $fillable = [
         'vote',
         'title',
@@ -92,4 +93,5 @@ class Question extends Model
     {
         return $this->morphMany(History::class, 'searched');
     }
+   
 }
