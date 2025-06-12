@@ -7,6 +7,7 @@ use App\Traits\HasViews;
 use App\Traits\HasVotes;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Support\Facades\Storage;
 
 class Question extends Model
 {
@@ -66,6 +67,14 @@ class Question extends Model
             "groupQuestion.subject",
             "searchedHistory"
         ];
+    }
+
+    public function getImageUrlAttribute()
+    {
+        if ($this->image) {
+            return Storage::disk('public')->url($this->image);
+        }
+        return null;
     }
 
     public function answer()

@@ -1,12 +1,22 @@
-from flask import Flask, request, jsonify
-import threading
+from flask import Flask, Blueprint, request, jsonify
+from sentence_transformers import SentenceTransformer
+from torchvision import models, transforms
+from torchvision.models import ResNet50_Weights
+from PIL import Image
+import torch
+import werkzeug.utils
+import numpy as np
+import threading, time
+import os
 from mysql.connector import pooling, Error
 import time
-from datetime import datetime, timedelta
+from datetime import timedelta
 import heapq
+from flask_cors import CORS
 
 app = Flask(__name__)
 
+#SD (Data Structures)
 class UserViewStat:
     def __init__(self):
         self.view_stats = {}
@@ -420,13 +430,230 @@ def leaderboard_api():
             "error": str(e)
         }), 500
 
+
+#AIML (Artificial Intelligence and Machine Learning)
+bp = Blueprint('tag_recommender', __name__, url_prefix='/ai')
+CORS(app, resources={r"/ai/*": {"origins": "http://localhost:8000"}})
+UPLOAD_FOLDER = 'temp_uploads'
+if not os.path.exists(UPLOAD_FOLDER):
+    os.makedirs(UPLOAD_FOLDER)
+
+text_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
+resnet = models.resnet50(weights=ResNet50_Weights.DEFAULT)
+image_model = torch.nn.Sequential(*list(resnet.children())[:-1]).eval()
+preprocess = transforms.Compose([
+    transforms.Resize((224,224)),
+    transforms.ToTensor(),
+    transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])
+])
+
+tag_prototypes = {}
+model_lock = threading.Lock()
+epsilon = 0.1
+learning_rate = 0.01
+
+def compute_text_embedding(text: str) -> np.ndarray:
+    return text_model.encode(text)
+
+def compute_image_embedding(path: str) -> np.ndarray:
+    try:
+        img = Image.open(path).convert('RGB')
+        tensor = preprocess(img).unsqueeze(0)
+        with torch.no_grad():
+            feat = image_model(tensor).squeeze().numpy()
+        return feat
+    except Exception as e:
+        print(f"Error computing image embedding for path '{path}': {e}")
+        return None
+
+def process_and_store_embeddings(question_id: str):
+    conn = conn_pool.get_connection()
+    cur = conn.cursor(dictionary=True)
+    cur.execute("SELECT title, question, image FROM questions WHERE id = %s", (question_id,))
+    q_data = cur.fetchone()
+    if not q_data:
+        cur.close(); conn.close()
+        return
+
+    txt_emb = compute_text_embedding((q_data['title'] or '') + ' ' + (q_data['question'] or ''))
+    img_emb = compute_image_embedding(q_data['image']) if q_data['image'] else None
+
+    cur.execute(
+        """
+        INSERT INTO question_embeddings (question_id, text_embedding, image_embedding)
+        VALUES (%s, %s, %s) ON DUPLICATE KEY UPDATE
+        text_embedding = VALUES(text_embedding), image_embedding = VALUES(image_embedding)
+        """, (question_id, txt_emb.tobytes(), img_emb.tobytes() if img_emb is not None else None)
+    )
+    conn.commit()
+    cur.close(); conn.close()
+    print(f"Stored embeddings for question {question_id}.")
+
+def update_tag_prototypes():
+    conn = conn_pool.get_connection()
+    cur = conn.cursor(dictionary=True)
+    cur.execute("""
+        SELECT sq.tag_id, qe.text_embedding, qe.image_embedding
+        FROM subject_questions sq 
+        JOIN question_embeddings qe ON sq.question_id = qe.question_id
+    """)
+    rows = cur.fetchall()
+    aggregates = {}
+    for row in rows:
+        tid = row['tag_id']
+        aggregates.setdefault(tid, {'texts': [], 'images': []})
+        text_emb = np.frombuffer(row['text_embedding'], dtype=np.float32)
+        aggregates[tid]['texts'].append(text_emb)
+        if row['image_embedding']:
+            image_emb = np.frombuffer(row['image_embedding'], dtype=np.float32)
+            aggregates[tid]['images'].append(image_emb)
+    cur.execute("SELECT id, name FROM tags")
+    all_tags = cur.fetchall()
+    cur.close(); conn.close()
+    with model_lock:
+        global tag_prototypes
+        new_prototypes = {}
+        for tag in all_tags:
+            tid = tag['id']
+            seed_txt = tag['name']
+            if tid in aggregates and aggregates[tid]['texts']:
+                new_prototypes[tid] = {
+                    'text':  np.mean(aggregates[tid]['texts'], axis=0),
+                    'image': np.mean(aggregates[tid]['images'], axis=0) if aggregates[tid]['images'] else None
+                }
+            else:
+                new_prototypes[tid] = {'text': compute_text_embedding(seed_txt), 'image': None}
+        tag_prototypes = new_prototypes
+    print("Tag prototypes updated successfully.")
+    
+def recommend_tags_for(txt_emb: np.ndarray, img_emb: np.ndarray, top_k: int = 5):
+    if txt_emb is None: return []
+    scores = []
+    with model_lock:
+        if not tag_prototypes: return []
+        for tid, proto in tag_prototypes.items():
+            t_sim = np.dot(txt_emb, proto['text']) / (np.linalg.norm(txt_emb) * np.linalg.norm(proto['text']))
+            i_sim = 0
+            if img_emb is not None and proto['image'] is not None:
+                i_sim = np.dot(img_emb, proto['image']) / (np.linalg.norm(img_emb) * np.linalg.norm(proto['image']))
+            score = 0.7 * t_sim + 0.3 * i_sim
+            if np.random.rand() < epsilon: score = score * np.random.rand()
+            scores.append((tid, score))
+    scores.sort(key=lambda x: x[1], reverse=True)
+    return [tid for tid, _ in scores[:top_k]]
+
+@bp.route('/recommend_tags', methods=['POST'])
+def recommend_tags():
+    title = request.form.get('title', '')
+    question_text = request.form.get('question', '')
+    image_file = request.files.get('image')
+    top_k = int(request.form.get('top_k', 5))
+    
+    full_text = title + ' ' + question_text
+    txt_emb = compute_text_embedding(full_text)
+    
+    img_emb = None
+    temp_image_path = None
+    try:
+        if image_file and image_file.filename != '':
+            filename = werkzeug.utils.secure_filename(image_file.filename)
+            temp_image_path = os.path.join(UPLOAD_FOLDER, filename)
+            image_file.save(temp_image_path)
+            img_emb = compute_image_embedding(temp_image_path)
+        
+        recommended_ids = recommend_tags_for(txt_emb, img_emb, top_k)
+        if not recommended_ids:
+            return jsonify(success=True, recommended_tags=[])
+            
+        conn = conn_pool.get_connection()
+        cur = conn.cursor(dictionary=True)
+        format_strings = ','.join(['%s'] * len(recommended_ids))
+        cur.execute(f"SELECT id, name FROM tags WHERE id IN ({format_strings})", tuple(recommended_ids))
+        tags_from_db = {tag['id']: tag['name'] for tag in cur.fetchall()}
+        cur.close(); conn.close()
+        response_data = [{"id": tid, "name": tags_from_db.get(tid, "Unknown Tag")} for tid in recommended_ids]
+        
+        return jsonify(success=True, recommended_tags=response_data)
+        
+    finally:
+        if temp_image_path and os.path.exists(temp_image_path):
+            os.remove(temp_image_path)
+
+@bp.route('/process_embeddings', methods=['POST'])
+def trigger_embedding_processing():
+    data = request.json
+    qid = data.get('question_id')
+    if not qid:
+        return jsonify(success=False, message="question_id is required"), 400
+    try:
+        threading.Thread(target=process_and_store_embeddings, args=(qid,)).start()
+        return jsonify(success=True, message="Embedding processing started."), 202
+    except Exception as e:
+        return jsonify(success=False, message=f"Failed to start embedding process: {e}"), 500
+
+@bp.route('/tag_feedback', methods=['POST'])
+def tag_feedback():
+    title = request.form.get('title', '')
+    question_text = request.form.get('question', '')
+    image_file = request.files.get('image')
+
+    selected_tags = set(request.form.getlist('selected_tags[]'))
+    recommended_tags = set(request.form.getlist('recommended_tags[]'))
+
+    if not selected_tags and not recommended_tags:
+         return jsonify(success=False, message="selected_tags and recommended_tags are required"), 400
+
+    temp_image_path = None
+    try:
+        full_text = title + ' ' + question_text
+        q_text_emb = compute_text_embedding(full_text)
+        q_img_emb = None
+
+        if image_file and image_file.filename != '':
+            filename = werkzeug.utils.secure_filename(image_file.filename)
+            temp_image_path = os.path.join(UPLOAD_FOLDER, filename)
+            image_file.save(temp_image_path)
+            q_img_emb = compute_image_embedding(temp_image_path)
+        
+        with model_lock:
+            all_feedback_tags = selected_tags | recommended_tags
+            for tid in all_feedback_tags:
+                if tid in tag_prototypes:
+                    reward = 1.0 if tid in selected_tags else -1.0
+                    proto_text = tag_prototypes[tid]['text']
+                    tag_prototypes[tid]['text'] = proto_text + learning_rate * reward * (q_text_emb - proto_text)
+                    if q_img_emb is not None and tag_prototypes[tid]['image'] is not None:
+                        proto_image = tag_prototypes[tid]['image']
+                        tag_prototypes[tid]['image'] = proto_image + learning_rate * reward * (q_img_emb - proto_image)
+        return jsonify(success=True, message="Feedback processed and model updated in memory.")
+    except Exception as e:
+        print(f"Error in tag_feedback: {e}")
+        return jsonify(success=False, message=f"An error occurred: {e}"), 500
+    finally:
+        if temp_image_path and os.path.exists(temp_image_path):
+            os.remove(temp_image_path)
+            
+def monitor_prototypes_db(interval=300):
+    while True:
+        try:
+            print("Starting periodic update of tag prototypes...")
+            update_tag_prototypes()
+            time.sleep(interval)
+        except Exception as e:
+            print(f"Error during periodic prototype update: {e}")
+            time.sleep(60)
+
 if __name__ == '__main__':
+    app.register_blueprint(bp)
+    
     build_user_views_from_db()
     build_graph_from_db()
     build_leaderboard_from_db()
+    update_tag_prototypes() 
 
     threading.Thread(target=periodic_data_refresh, args=(2,), daemon=True).start()
     threading.Thread(target=monitor_recommendation_db, args=(2,), daemon=True).start()
     threading.Thread(target=monitor_leaderboard_db, args=(2,), daemon=True).start()
+    threading.Thread(target=monitor_prototypes_db, args=(300,), daemon=True).start()
 
-    app.run(debug=True, host='0.0.0.0')
+    app.run(debug=True, host='0.0.0.0', use_reloader=False)

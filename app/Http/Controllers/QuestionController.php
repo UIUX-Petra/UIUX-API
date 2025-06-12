@@ -5,14 +5,18 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Subject;
 use App\Models\Question;
+use DB;
 use Illuminate\Http\Request;
 use App\Models\GroupQuestion;
 use App\Utils\HttpResponseCode;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\BaseController;
 use App\Http\Controllers\UserController;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\GroupQuestionController;
+use Illuminate\Support\Str;
 
 class QuestionController extends BaseController
 {
@@ -147,25 +151,149 @@ class QuestionController extends BaseController
     }
 
 
-    public function store(Request $request)
+    private function triggerAiServices(Question $question, Request $request)
     {
-        $userId = $this->userController->getUserId($request->email);
-        $request->merge(['user_id' => $userId]);
-        $request->request->remove('email');
-
-        $data = $request->only($this->model->getFillable());
-        $valid = Validator::make($data, $this->model->validationRules(), $this->model->validationMessages());
-
-        if ($valid->fails()) {
-            $validationError = $valid->errors()->first();
-            Log::error("Validation failed:", ['error' => $validationError]);
-            return $this->error($validationError, HttpResponseCode::HTTP_NOT_ACCEPTABLE);
+        $aiServiceUrl = env('AI_SERVICE_URL', 'http://localhost:5000/ai');
+        $feedbackRequest = Http::async()->asMultipart();
+        if ($request->hasFile('image')) {
+            $imageFile = $request->file('image');
+            $feedbackRequest->attach(
+                'image',
+                file_get_contents($imageFile->getRealPath()),
+                $imageFile->getClientOriginalName()
+            );
         }
 
-        $model = $this->model->create($data);
-        $request->request->add(['question_id' => $model->id]);
-        $this->tagsQuestionController->store($request);
-        return $this->success('Data successfully saved to model', $model);
+        $feedbackRequest->post("$aiServiceUrl/tag_feedback", [
+            'title' => $question->title,
+            'question' => $question->question,
+            'selected_tags' => $request->input('selected_tags', []),
+            'recommended_tags' => $request->input('recommended_tags', []),
+        ]);
+
+        Http::async()->post("$aiServiceUrl/process_embeddings", [
+            'question_id' => $question->id
+        ]);
+    }
+
+    public function store(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:255',
+            'question' => 'required|string',
+            'image' => 'nullable|file|image|max:2048',
+            'selected_tags' => 'required|array|min:1',
+            'selected_tags.*' => 'string|uuid',
+            'recommended_tags' => 'nullable|array',
+            'recommended_tags.*' => 'string|uuid',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $validatedData = $validator->validated();
+            $imagePath = null;
+            if ($request->hasFile('image')) {
+                $imageFile = $request->file('image');
+                $user = $request->user();
+                $timestamp = date('Y-m-d_H-i-s');
+                $extension = $imageFile->getClientOriginalExtension();
+                $customFileName = "q_" . ($user->email ?? 'user' . $user->id) . "_" . $timestamp . "." . $extension;
+
+                $imagePath = $imageFile->storeAs("question_images", $customFileName, 'public');
+            }
+
+            $question = $this->model->create([
+                'title' => $validatedData['title'],
+                'question' => $validatedData['question'],
+                'image' => $imagePath,
+                'user_id' => $request->user()->id,
+            ]);
+
+            $selectedTags = $validatedData['selected_tags'];
+            $recommendedTags = $validatedData['recommended_tags'] ?? [];
+            $tagsForController = [];
+            foreach ($selectedTags as $tagId) {
+                $tagsForController[] = ['id' => $tagId, 'is_recommended' => in_array($tagId, $recommendedTags)];
+            }
+            $tagsRequest = new Request(['question_id' => $question->id, 'tags' => $tagsForController]);
+            $this->tagsQuestionController->store($tagsRequest);
+
+            $this->triggerAiServices($question, $request);
+
+            DB::commit();
+
+            return $this->success('Question published successfully!', $question);
+
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('API Store Question Failed: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            return $this->error('Server error while saving question.', 500);
+        }
+    }
+
+    public function updatePartial(Request $request, $id)
+    {
+        $question = $this->model->findOrFail($id);
+
+        if ($request->user()->id !== $question->user_id) {
+            return $this->error('You are not authorized to edit this question.', 403);
+        }
+        $validator = Validator::make($request->all(), [
+            'title' => 'sometimes|required|string|max:255',
+            'question' => 'sometimes|required|string',
+            'image' => 'nullable|file|image|max:2048',
+            'remove_existing_image' => 'nullable|in:1',
+            'selected_tags' => 'sometimes|required|array|min:1',
+            'selected_tags.*' => 'string|uuid',
+        ]);
+
+        if ($validator->fails()) {
+            return $this->error($validator->errors()->first(), 422);
+        }
+
+        DB::beginTransaction();
+        try {
+            $validatedData = $validator->validated();
+            $question->update($request->only('title', 'question'));
+            $oldImage = $question->image;
+            $newImagePath = $oldImage;
+
+            if ($request->hasFile('image')) {
+                if ($oldImage && Storage::disk('public')->exists($oldImage)) {
+                    Storage::disk('public')->delete($oldImage);
+                }
+                $newImagePath = $request->file('image')->store('question_images', 'public');
+
+            } elseif ($request->input('remove_existing_image') == '1' && $oldImage) {
+                if (Storage::disk('public')->exists($oldImage)) {
+                    Storage::disk('public')->delete($oldImage);
+                }
+                $newImagePath = null;
+            }
+            $question->image = $newImagePath;
+            $question->save();
+            if ($request->has('selected_tags')) {
+                $tagsForController = [];
+                foreach ($validatedData['selected_tags'] as $tagId) {
+                    $tagsForController[] = ['id' => $tagId, 'is_recommended' => false];
+                }
+                $tagsRequest = new Request(['question_id' => $question->id, 'tags' => $tagsForController]);
+                $this->tagsQuestionController->store($tagsRequest);
+            }
+            Http::async()->post(env('AI_SERVICE_URL', 'http://localhost:5000/ai') . "/process_embeddings", [
+                'question_id' => $question->id
+            ]);
+            DB::commit();
+            return $this->success('Question updated successfully!', $question);
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            Log::error('API Update Question Failed: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
+            return $this->error('Server error while updating question.', 500);
+        }
     }
 
     public function getQuestionByAnswerId($answer_id)
