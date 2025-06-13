@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Jobs\ProcessQuestionAiServices;
 use App\Models\User;
-use App\Models\Subject;
 use App\Models\Question;
 use DB;
 use Illuminate\Http\Request;
@@ -150,32 +150,6 @@ class QuestionController extends BaseController
         return $this->success('Successfully retrieved data', $data);
     }
 
-
-    private function triggerAiServices(Question $question, Request $request)
-    {
-        $aiServiceUrl = env('AI_SERVICE_URL', 'http://localhost:5000/ai');
-        $feedbackRequest = Http::async()->asMultipart();
-        if ($request->hasFile('image')) {
-            $imageFile = $request->file('image');
-            $feedbackRequest->attach(
-                'image',
-                file_get_contents($imageFile->getRealPath()),
-                $imageFile->getClientOriginalName()
-            );
-        }
-
-        $feedbackRequest->post("$aiServiceUrl/tag_feedback", [
-            'title' => $question->title,
-            'question' => $question->question,
-            'selected_tags' => $request->input('selected_tags', []),
-            'recommended_tags' => $request->input('recommended_tags', []),
-        ]);
-
-        Http::async()->post("$aiServiceUrl/process_embeddings", [
-            'question_id' => $question->id
-        ]);
-    }
-
     public function store(Request $request)
     {
         $validator = Validator::make($request->all(), [
@@ -222,7 +196,11 @@ class QuestionController extends BaseController
             $tagsRequest = new Request(['question_id' => $question->id, 'tags' => $tagsForController]);
             $this->tagsQuestionController->store($tagsRequest);
 
-            $this->triggerAiServices($question, $request);
+            $tagsData = [
+                'selected_tags' => $request->input('selected_tags', []),
+                'recommended_tags' => $request->input('recommended_tags', [])
+            ];
+            ProcessQuestionAiServices::dispatch($question->id, $tagsData, $imagePath);
 
             DB::commit();
 
