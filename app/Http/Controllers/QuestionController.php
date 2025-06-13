@@ -112,43 +112,43 @@ class QuestionController extends BaseController
         return $this->success('Successfully retrieved data', $data);
     }
 
-    public function getQuestionPaginatedHome(Request $request)
-    {
-        $perPage = $request->input('per_page', 10);
-        $userEmail = $request->input('email');
-        // $filterTag = $request->input('filter_tag', null); // Tetap ada filter berdasarkan tag
+    // public function getQuestionPaginatedHome(Request $request)
+    // {
+    //     $perPage = $request->input('per_page', 10);
+    //     $userEmail = $request->input('email');
+    //     // $filterTag = $request->input('filter_tag', null); // Tetap ada filter berdasarkan tag
 
-        $requestUser = null;
-        if ($userEmail) {
-            $requestUser = User::where('email', $userEmail)->first();
-        }
+    //     $requestUser = null;
+    //     if ($userEmail) {
+    //         $requestUser = User::where('email', $userEmail)->first();
+    //     }
 
-        $query = $this->model->with($this->model->getDefaultRelations()) // Asumsi getDefaultRelations() ada
-            ->withCount([
-                'comment as comments_count',
-            ]);
+    //     $query = $this->model->with($this->model->getDefaultRelations()) // Asumsi getDefaultRelations() ada
+    //         ->withCount([
+    //             'comment as comments_count',
+    //         ]);
 
-        $query->orderBy('created_at', 'desc'); // Default order by terbaru
+    //     $query->orderBy('created_at', 'desc'); // Default order by terbaru
 
-        if ($requestUser) {
-            $query->withExists([
-                'savedByUsers as is_saved_by_request_user' => function ($subQuery) use ($requestUser) {
-                    $subQuery->where('saved_questions.user_id', $requestUser->id);
-                }
-            ]);
-        }
+    //     if ($requestUser) {
+    //         $query->withExists([
+    //             'savedByUsers as is_saved_by_request_user' => function ($subQuery) use ($requestUser) {
+    //                 $subQuery->where('saved_questions.user_id', $requestUser->id);
+    //             }
+    //         ]);
+    //     }
 
-        $data = $query->paginate($perPage);
+    //     $data = $query->paginate($perPage);
 
-        if ($data->isNotEmpty()) {
-            $data->getCollection()->transform(function ($item) {
-                $item->is_saved_by_request_user = (bool) ($item->is_saved_by_request_user ?? false);
-                return $item;
-            });
-        }
+    //     if ($data->isNotEmpty()) {
+    //         $data->getCollection()->transform(function ($item) {
+    //             $item->is_saved_by_request_user = (bool) ($item->is_saved_by_request_user ?? false);
+    //             return $item;
+    //         });
+    //     }
 
-        return $this->success('Successfully retrieved data', $data);
-    }
+    //     return $this->success('Successfully retrieved data', $data);
+    // }
 
     public function store(Request $request)
     {

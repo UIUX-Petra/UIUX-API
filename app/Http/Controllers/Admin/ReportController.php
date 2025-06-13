@@ -36,9 +36,9 @@ class ReportController extends Controller
             Log::debug('Menerapkan filter tipe laporan.', ['type' => $type]);
 
             $reportableClass = match ($type) {
-                'question' => Question::class,
-                'answer'   => Answer::class,
-                'comment'  => Comment::class,
+                'question' => 'question',
+                'answer'   => 'answer' ,
+                'comment'  => 'comment' ,
                 default    => null,
             };
             Log::debug('Menerapkan filter tipe laporan.', ['reportableClass' => $reportableClass]);
@@ -64,7 +64,7 @@ class ReportController extends Controller
             });
         }
 
-        $perPage = $request->query('per_page', 10);
+        $perPage = $request->query('per_page', 5);
         $reports = $reportsQuery->latest()->paginate($perPage);
 
         Log::info('Berhasil mengambil data laporan dari database.', [

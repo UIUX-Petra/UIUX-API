@@ -13,7 +13,7 @@ use Illuminate\Support\Str;
 
 class AuthController extends BaseController
 {
-      public function __construct(Admin $admin)
+    public function __construct(Admin $admin)
     {
         parent::__construct($admin);
     }
@@ -21,7 +21,7 @@ class AuthController extends BaseController
     {
         Log::info('Menerima permintaan socialite login baru.', $request->all());
 
-          if (!env('API_SECRET') || $request->input('secret') !== env('API_SECRET')) {
+        if (!env('API_SECRET') || $request->input('secret') !== env('API_SECRET')) {
             return $this->error('Please Regist From ' . env('APP_NAME') . ' Website!', HttpResponseCode::HTTP_UNAUTHORIZED);
         }
 
@@ -47,19 +47,22 @@ class AuthController extends BaseController
                 HttpResponseCode::HTTP_FORBIDDEN
             );
         }
-        
+
         Log::info('Admin ditemukan.', ['id' => $admin->id, 'email' => $admin->email]);
 
-        
-            $admin->save();
-            Log::info('Email admin telah diverifikasi.', ['id' => $admin->id]);
+
+        $admin->save();
+        Log::info('Email admin telah diverifikasi.', ['id' => $admin->id]);
         $admin->tokens()->delete();
-        $adminToken = $admin->createToken('Admin_token', ['Admin'])->plainTextToken;
+
+        $abilities = ['role:admin']; 
+
+        $adminToken = $admin->createToken('Admin_token', $abilities)->plainTextToken;
         Log::info('Token baru berhasil dibuat untuk admin.', ['id' => $admin->id]);
 
         $responseData = [
             'id' => $admin->id,
-            'name' => $admin->Adminname,
+            'name' => $admin->name,
             'email' => $admin->email,
             'token' => $adminToken,
         ];
