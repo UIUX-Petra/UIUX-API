@@ -12,9 +12,11 @@ from mysql.connector import pooling, Error
 import time
 from datetime import timedelta
 import heapq
+from dotenv import load_dotenv
 from flask_cors import CORS
 
 app = Flask(__name__)
+load_dotenv()
 
 #SD (Data Structures)
 class UserViewStat:
@@ -476,7 +478,16 @@ def process_and_store_embeddings(question_id: str):
         return
 
     txt_emb = compute_text_embedding((q_data['title'] or '') + ' ' + (q_data['question'] or ''))
-    img_emb = compute_image_embedding(q_data['image']) if q_data['image'] else None
+    # img_emb = compute_image_embedding(q_data['image']) if q_data['image'] else None
+    img_emb = None
+    if q_data.get('image'):
+        laravel_public_path = os.getenv('PUBLIC_PATH', '../public')
+        if laravel_public_path:
+            full_image_path = os.path.join(laravel_public_path, 'storage', q_data['image'])
+            print(f"Attempting to load image from: {full_image_path}")
+            img_emb = compute_image_embedding(full_image_path)
+        else:
+            print("Warning: PUBLIC_PATH environment variable not set. Cannot process image.")
 
     cur.execute(
         """
