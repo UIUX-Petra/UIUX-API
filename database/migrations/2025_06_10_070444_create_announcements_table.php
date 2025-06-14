@@ -12,8 +12,11 @@ return new class extends Migration
             $table->uuid('id')->primary();
             $table->foreignUuid('admin_id')->constrained('admins')->onDelete('cascade');
             $table->string('title');
-            $table->text('detail');
-            $table->string('status', 50)->default('draft'); // Contoh: draft, published, archived
+            $table->text('detail'); 
+            $table->string('status', 50)->default('draft'); // draft, published, archived
+            $table->boolean('display_on_web')->default(false); // Kontrol tampilan di web
+            $table->timestamp('published_at')->nullable(); // Kapan dipublish
+            $table->timestamp('notified_at')->nullable(); // Kapan email dikirim
             $table->timestamps();
         });
     }

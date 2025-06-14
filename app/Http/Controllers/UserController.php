@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use Http;
 use App\Models\User;
 use App\Models\Question;
 use App\Utils\HttpResponseCode;
@@ -12,6 +11,8 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\BaseController;
 use App\Http\Controllers\QuestionController;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Facades\Http;
+
 
 class UserController extends BaseController
 {

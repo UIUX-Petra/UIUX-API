@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Jobs\ProcessQuestionAiServices;
 use App\Models\User;
 use App\Models\Question;
-use DB;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Http\Request;
 use App\Models\GroupQuestion;
 use App\Utils\HttpResponseCode;
@@ -16,7 +16,6 @@ use App\Http\Controllers\UserController;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\GroupQuestionController;
-use Illuminate\Support\Str;
 
 class QuestionController extends BaseController
 {

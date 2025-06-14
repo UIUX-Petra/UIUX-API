@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
+use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\AuthController;
@@ -91,5 +92,12 @@ Route::prefix('admin')->group(function () {
         Route::post('/users/{user}/unblock', [AdminUserController::class, 'unblockUser'])->name('users.unblock');
         Route::post('/logout', [AdminAuthController::class, 'logout']);
         Route::get('/me', [AdminAuthController::class, 'me']);
+
+        // announcements
+        Route::get('/announcements', [AnnouncementController::class, 'index']);
+        Route::post('/announcements', [AnnouncementController::class, 'store']);
+        Route::get('/announcements/{announcement}', [AnnouncementController::class, 'showDetail']);
+        Route::put('/announcements/{announcement}', [AnnouncementController::class, 'updateDetail']);
+        Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroyAnnouncement']);
     });
 });
