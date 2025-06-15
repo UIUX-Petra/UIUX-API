@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\SubjectController as AdminSubjectController;
 use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\CommentController;
@@ -99,5 +100,7 @@ Route::prefix('admin')->group(function () {
         Route::get('/announcements/{announcement}', [AnnouncementController::class, 'showDetail']);
         Route::put('/announcements/{announcement}', [AnnouncementController::class, 'updateDetail']);
         Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroyAnnouncement']);
+
+        Route::apiResource('subjects', AdminSubjectController::class);
     });
 });

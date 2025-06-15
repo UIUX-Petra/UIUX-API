@@ -5,10 +5,10 @@ namespace App\Models;
 use App\Models\GroupQuestion;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
+use Illuminate\Validation\Rule;
 
 class Subject extends Model
 {
-
     use HasUuids;
 
     protected $table = 'tags';
@@ -19,18 +19,32 @@ class Subject extends Model
         'abbreviation'
     ];
 
-    public static function validationRules()
+    public static function validationRules($subjectId = null)
     {
         return [
-            'name'=>'required|string'
+            'name' => [
+                'required',
+                'string',
+                Rule::unique('tags', 'name')->ignore($subjectId),
+            ],
+            'abbreviation' => [
+                'required',
+                'string',
+                Rule::unique('tags', 'abbreviation')->ignore($subjectId),
+            ]
         ];
     }
 
+  
     public static function validationMessages()
     {
         return [
-            'name.required' => 'The subject field is required.',
-            'name.string' => 'The subject must be a valid string.',
+            'name.required' => 'Nama subject tidak boleh kosong.',
+            'name.string' => 'Nama subject harus berupa teks.',
+            'name.unique' => 'Nama subject ini sudah digunakan.',
+            'abbreviation.required' => 'Singkatan tidak boleh kosong.',
+            'abbreviation.string' => 'Singkatan harus berupa teks.',
+            'abbreviation.unique' => 'Singkatan ini sudah digunakan.',
         ];
     }
     
@@ -44,7 +58,8 @@ class Subject extends Model
     public function groupQuestion(){
         return $this->hasMany(GroupQuestion::class, 'tag_id');
     }
-        public function searchedHistory()
+
+    public function searchedHistory()
     {
         return $this->morphMany(History::class, 'searched');
     }
