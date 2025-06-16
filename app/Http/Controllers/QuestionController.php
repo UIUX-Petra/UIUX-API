@@ -165,6 +165,8 @@ class QuestionController extends BaseController
             return $this->error($validator->errors()->first(), 422);
         }
 
+        
+
         DB::beginTransaction();
         try {
             $validatedData = $validator->validated();

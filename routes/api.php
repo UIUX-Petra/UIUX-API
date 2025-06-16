@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SubjectController;
+use App\Models\Question;
 
 // Route::get('/', function () {
 //     return view('welcome');
@@ -122,4 +123,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
          Route::get('/users', [AdminUserController::class, 'getBasicUserInfo'])->name('api.admin.users.index');
          Route::get('/users/{user}/activity', [AdminUserController::class, 'getActivitySummary']);
     });
+    
+Route::get('/export-questions-json', function () {
+    $questions = Question::select('id', 'title', 'question')->get();
+    return response()->json($questions);
 });
