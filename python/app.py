@@ -12,9 +12,12 @@ from mysql.connector import pooling, Error
 import time
 from datetime import timedelta
 import heapq
+from dotenv import load_dotenv
 from flask_cors import CORS
+from functools import lru_cache
 
 app = Flask(__name__)
+load_dotenv()
 
 #SD (Data Structures)
 class UserViewStat:
@@ -434,9 +437,6 @@ def leaderboard_api():
 #AIML (Artificial Intelligence and Machine Learning)
 bp = Blueprint('tag_recommender', __name__, url_prefix='/ai')
 CORS(app, resources={r"/ai/*": {"origins": "http://localhost:8000"}})
-UPLOAD_FOLDER = 'temp_uploads'
-if not os.path.exists(UPLOAD_FOLDER):
-    os.makedirs(UPLOAD_FOLDER)
 
 text_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 resnet = models.resnet50(weights=ResNet50_Weights.DEFAULT)
@@ -451,19 +451,30 @@ tag_prototypes = {}
 model_lock = threading.Lock()
 epsilon = 0.1
 learning_rate = 0.01
+TEXT_WEIGHT = 0.7
+IMAGE_WEIGHT = 0.3
+SEED_WEIGHT_NEW_TAG = 1.0
+SEED_WEIGHT_JUVENILE_TAG = 0.6
+SEED_WEIGHT_MATURE_TAG = 0.2
+JUVENILE_THRESHOLD = 20
+MATURITY_THRESHOLD = 150
+NEW_CONFIDENCE_THRESHOLD = 0.25
+JUVENILE_CONFIDENCE_THRESHOLD = 0.5
+MATURE_CONFIDENCE_THRESHOLD = 0.8
 
+@lru_cache(maxsize=1024)
 def compute_text_embedding(text: str) -> np.ndarray:
     return text_model.encode(text)
 
-def compute_image_embedding(path: str) -> np.ndarray:
+def compute_image_embedding(image_source) -> np.ndarray:
     try:
-        img = Image.open(path).convert('RGB')
+        img = Image.open(image_source).convert('RGB')
         tensor = preprocess(img).unsqueeze(0)
         with torch.no_grad():
             feat = image_model(tensor).squeeze().numpy()
         return feat
     except Exception as e:
-        print(f"Error computing image embedding for path '{path}': {e}")
+        print(f"Error computing image embedding: {e}")
         return None
 
 def process_and_store_embeddings(question_id: str):
@@ -476,7 +487,15 @@ def process_and_store_embeddings(question_id: str):
         return
 
     txt_emb = compute_text_embedding((q_data['title'] or '') + ' ' + (q_data['question'] or ''))
-    img_emb = compute_image_embedding(q_data['image']) if q_data['image'] else None
+    img_emb = None
+    if q_data.get('image'):
+        laravel_public_path = os.getenv('PUBLIC_PATH', '../public')
+        if laravel_public_path:
+            full_image_path = os.path.join(laravel_public_path, 'storage', q_data['image'])
+            print(f"Attempting to load image from: {full_image_path}")
+            img_emb = compute_image_embedding(full_image_path)
+        else:
+            print("Warning: PUBLIC_PATH environment variable not set. Cannot process image.")
 
     cur.execute(
         """
@@ -501,13 +520,14 @@ def update_tag_prototypes():
     aggregates = {}
     for row in rows:
         tid = row['tag_id']
-        aggregates.setdefault(tid, {'texts': [], 'images': []})
+        aggregates.setdefault(tid, {'texts': [], 'images': [], 'count': 0})
         text_emb = np.frombuffer(row['text_embedding'], dtype=np.float32)
         aggregates[tid]['texts'].append(text_emb)
         if row['image_embedding']:
             image_emb = np.frombuffer(row['image_embedding'], dtype=np.float32)
             aggregates[tid]['images'].append(image_emb)
-    cur.execute("SELECT id, name FROM tags")
+        aggregates[tid]['count'] += 1
+    cur.execute("SELECT id, name, abbreviation, description FROM tags")
     all_tags = cur.fetchall()
     cur.close(); conn.close()
     with model_lock:
@@ -515,18 +535,39 @@ def update_tag_prototypes():
         new_prototypes = {}
         for tag in all_tags:
             tid = tag['id']
-            seed_txt = tag['name']
-            if tid in aggregates and aggregates[tid]['texts']:
+            text_parts = [tag['name']]
+            if tag.get('abbreviation'): text_parts.append(tag['abbreviation'])
+            if tag.get('description'): text_parts.append(tag['description'])
+            seed_text_embedding = compute_text_embedding(' '.join(text_parts))
+            
+            tag_data = aggregates.get(tid)
+            if tag_data and tag_data['texts']:
+                question_count = tag_data['count']
+                if question_count < JUVENILE_THRESHOLD:
+                    seed_weight = SEED_WEIGHT_NEW_TAG
+                elif question_count < MATURITY_THRESHOLD:
+                    seed_weight = SEED_WEIGHT_JUVENILE_TAG
+                else:
+                    seed_weight = SEED_WEIGHT_MATURE_TAG
+                history_weight = 1.0 - seed_weight
+                questions_mean_text = np.mean(tag_data['texts'], axis=0)
+                hybrid_text_prototype = (seed_weight * seed_text_embedding) + (history_weight * questions_mean_text)
+                hybrid_image_prototype = np.mean(tag_data['images'], axis=0) if tag_data['images'] else None
                 new_prototypes[tid] = {
-                    'text':  np.mean(aggregates[tid]['texts'], axis=0),
-                    'image': np.mean(aggregates[tid]['images'], axis=0) if aggregates[tid]['images'] else None
+                    'text':  hybrid_text_prototype,
+                    'image': hybrid_image_prototype,
+                    'count': question_count
                 }
             else:
-                new_prototypes[tid] = {'text': compute_text_embedding(seed_txt), 'image': None}
+                new_prototypes[tid] = {
+                    'text': seed_text_embedding, 
+                    'image': None,
+                    'count': 0 
+                }
         tag_prototypes = new_prototypes
     print("Tag prototypes updated successfully.")
     
-def recommend_tags_for(txt_emb: np.ndarray, img_emb: np.ndarray, top_k: int = 5):
+def get_all_tags_score(txt_emb: np.ndarray, img_emb: np.ndarray):
     if txt_emb is None: return []
     scores = []
     with model_lock:
@@ -535,49 +576,59 @@ def recommend_tags_for(txt_emb: np.ndarray, img_emb: np.ndarray, top_k: int = 5)
             t_sim = np.dot(txt_emb, proto['text']) / (np.linalg.norm(txt_emb) * np.linalg.norm(proto['text']))
             i_sim = 0
             if img_emb is not None and proto['image'] is not None:
-                i_sim = np.dot(img_emb, proto['image']) / (np.linalg.norm(img_emb) * np.linalg.norm(proto['image']))
-            score = 0.7 * t_sim + 0.3 * i_sim
+                norm_img = np.linalg.norm(img_emb)
+                norm_proto = np.linalg.norm(proto['image'])
+                if norm_img > 0 and norm_proto > 0:
+                    i_sim = np.dot(img_emb, proto['image']) / (norm_img * norm_proto)
+            score = TEXT_WEIGHT * t_sim + IMAGE_WEIGHT * i_sim
             if np.random.rand() < epsilon: score = score * np.random.rand()
-            scores.append((tid, score))
+            scores.append((tid, score, proto['count']))
     scores.sort(key=lambda x: x[1], reverse=True)
-    return [tid for tid, _ in scores[:top_k]]
+    return scores
 
 @bp.route('/recommend_tags', methods=['POST'])
 def recommend_tags():
     title = request.form.get('title', '')
     question_text = request.form.get('question', '')
     image_file = request.files.get('image')
-    top_k = int(request.form.get('top_k', 5))
     
     full_text = title + ' ' + question_text
     txt_emb = compute_text_embedding(full_text)
     
     img_emb = None
-    temp_image_path = None
-    try:
-        if image_file and image_file.filename != '':
-            filename = werkzeug.utils.secure_filename(image_file.filename)
-            temp_image_path = os.path.join(UPLOAD_FOLDER, filename)
-            image_file.save(temp_image_path)
-            img_emb = compute_image_embedding(temp_image_path)
+    if image_file and image_file.filename != '':
+        img_emb = compute_image_embedding(image_file.stream)
+    
+    all_scored_tags  = get_all_tags_score(txt_emb, img_emb)
+    if not all_scored_tags :
+        return jsonify(success=True, recommended_tags=[])
+    
+    recommended_ids = []
+    for tid, score, count in all_scored_tags:
+        if count < JUVENILE_THRESHOLD:
+            dynamic_threshold = NEW_CONFIDENCE_THRESHOLD
+        elif count < MATURITY_THRESHOLD:
+            dynamic_threshold = JUVENILE_CONFIDENCE_THRESHOLD
+        else:
+            dynamic_threshold = MATURE_CONFIDENCE_THRESHOLD
+        if score >= dynamic_threshold:
+            recommended_ids.append(tid)
+    
+    for tid,score,count in all_scored_tags:
+        print(score)
         
-        recommended_ids = recommend_tags_for(txt_emb, img_emb, top_k)
-        if not recommended_ids:
-            return jsonify(success=True, recommended_tags=[])
-            
-        conn = conn_pool.get_connection()
-        cur = conn.cursor(dictionary=True)
-        format_strings = ','.join(['%s'] * len(recommended_ids))
-        cur.execute(f"SELECT id, name FROM tags WHERE id IN ({format_strings})", tuple(recommended_ids))
-        tags_from_db = {tag['id']: tag['name'] for tag in cur.fetchall()}
-        cur.close(); conn.close()
-        response_data = [{"id": tid, "name": tags_from_db.get(tid, "Unknown Tag")} for tid in recommended_ids]
-        
-        return jsonify(success=True, recommended_tags=response_data)
-        
-    finally:
-        if temp_image_path and os.path.exists(temp_image_path):
-            os.remove(temp_image_path)
+    if not recommended_ids and all_scored_tags:
+        best_tag_id = all_scored_tags[0][0] 
+        recommended_ids = [best_tag_id]
+    
+    conn = conn_pool.get_connection()
+    cur = conn.cursor(dictionary=True)
+    format_strings = ','.join(['%s'] * len(recommended_ids))
+    cur.execute(f"SELECT id, name FROM tags WHERE id IN ({format_strings})", tuple(recommended_ids))
+    tags_from_db = {tag['id']: tag['name'] for tag in cur.fetchall()}
+    cur.close(); conn.close()
+    response_data = [{"id": tid, "name": tags_from_db.get(tid, "Unknown Tag")} for tid in recommended_ids]
+    return jsonify(success=True, recommended_tags=response_data)
 
 @bp.route('/process_embeddings', methods=['POST'])
 def trigger_embedding_processing():
@@ -596,42 +647,41 @@ def tag_feedback():
     title = request.form.get('title', '')
     question_text = request.form.get('question', '')
     image_file = request.files.get('image')
-
     selected_tags = set(request.form.getlist('selected_tags[]'))
     recommended_tags = set(request.form.getlist('recommended_tags[]'))
 
     if not selected_tags and not recommended_tags:
          return jsonify(success=False, message="selected_tags and recommended_tags are required"), 400
 
-    temp_image_path = None
     try:
         full_text = title + ' ' + question_text
-        q_text_emb = compute_text_embedding(full_text)
-        q_img_emb = None
-
-        if image_file and image_file.filename != '':
-            filename = werkzeug.utils.secure_filename(image_file.filename)
-            temp_image_path = os.path.join(UPLOAD_FOLDER, filename)
-            image_file.save(temp_image_path)
-            q_img_emb = compute_image_embedding(temp_image_path)
+        text_emb = compute_text_embedding(full_text)
         
+        img_emb = None
+        if image_file and image_file.filename != '':
+            img_emb = compute_image_embedding(image_file.stream)
+            
+        tags_to_punish = recommended_tags - selected_tags
         with model_lock:
-            all_feedback_tags = selected_tags | recommended_tags
-            for tid in all_feedback_tags:
+            for tid in selected_tags:
                 if tid in tag_prototypes:
-                    reward = 1.0 if tid in selected_tags else -1.0
                     proto_text = tag_prototypes[tid]['text']
-                    tag_prototypes[tid]['text'] = proto_text + learning_rate * reward * (q_text_emb - proto_text)
-                    if q_img_emb is not None and tag_prototypes[tid]['image'] is not None:
+                    tag_prototypes[tid]['text'] = proto_text + learning_rate * 1.0 * (text_emb - proto_text)
+                    if img_emb is not None and tag_prototypes[tid]['image'] is not None:
                         proto_image = tag_prototypes[tid]['image']
-                        tag_prototypes[tid]['image'] = proto_image + learning_rate * reward * (q_img_emb - proto_image)
+                        tag_prototypes[tid]['image'] = proto_image + learning_rate * 1.0 * (img_emb - proto_image)
+
+            for tid in tags_to_punish:
+                if tid in tag_prototypes:
+                    proto_text = tag_prototypes[tid]['text']
+                    tag_prototypes[tid]['text'] = proto_text + learning_rate * -1.0 * (text_emb - proto_text)
+                    if img_emb is not None and tag_prototypes[tid]['image'] is not None:
+                        proto_image = tag_prototypes[tid]['image']
+                        tag_prototypes[tid]['image'] = proto_image + learning_rate * -1.0 * (img_emb - proto_image)
         return jsonify(success=True, message="Feedback processed and model updated in memory.")
     except Exception as e:
         print(f"Error in tag_feedback: {e}")
         return jsonify(success=False, message=f"An error occurred: {e}"), 500
-    finally:
-        if temp_image_path and os.path.exists(temp_image_path):
-            os.remove(temp_image_path)
             
 def monitor_prototypes_db(interval=300):
     while True:

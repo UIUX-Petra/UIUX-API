@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SubjectController;
+use App\Models\Question;
 
 // Route::get('/', function () {
 //     return view('welcome');
@@ -74,3 +75,8 @@ Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
 Route::get('/getLeaderboardByTag/{id}', [UserController::class, 'getLeaderboardByTag']);
 Route::get('/getMostViewed/{email}', [UserController::class, 'getMostViewed']);
+
+Route::get('/export-questions-json', function () {
+    $questions = Question::select('id', 'title', 'question')->get();
+    return response()->json($questions);
+});
