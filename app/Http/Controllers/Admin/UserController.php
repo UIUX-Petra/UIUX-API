@@ -17,23 +17,59 @@ class UserController extends BaseController
         parent::__construct($model);
     }
 
-    public function getBasicUserInfo(){
-        $users = $this->model
+    public function getBasicUserInfo(Request $request) // Tambahkan Request $request
+    {
+        $search = $request->query('search');
+        $status = $request->query('status');
+
+        $query = $this->model
             ->withExists('activeBlock')
             ->select('id', 'username', 'image', 'email', 'created_at')
-            ->latest()
-            ->paginate(10);
+            // Terapkan pencarian jika ada
+            ->when($search, function ($q, $search) {
+                $q->where('username', 'like', "%{$search}%")
+                  ->orWhere('email', 'like', "%{$search}%");
+            })
+            // Terapkan filter status jika ada
+            ->when($status, function ($q, $status) {
+                if ($status === 'active') {
+                    // Hanya user yang tidak punya blok aktif
+                    return $q->whereDoesntHave('activeBlock');
+                } elseif ($status === 'blocked') {
+                    // Hanya user yang punya blok aktif
+                    return $q->whereHas('activeBlock');
+                }
+            });
+
+        $users = $query->latest()->paginate(10);
 
         $users->getCollection()->transform(function ($user) {
             $user->status = $user->active_block_exists ? 'Blocked' : 'Active';
             $user->registered_at = $user->created_at->format('M d, Y');
             unset($user->active_block_exists, $user->created_at);
-
             return $user;
         });
 
         return $this->success('Successfully retrieved user data', $users);
     }
+
+    //  public function getBasicUserInfo(){
+    //     $users = $this->model
+    //         ->withExists('activeBlock')
+    //         ->select('id', 'username', 'image', 'email', 'created_at')
+    //         ->latest()
+    //         ->paginate(10);
+
+    //     $users->getCollection()->transform(function ($user) {
+    //         $user->status = $user->active_block_exists ? 'Blocked' : 'Active';
+    //         $user->registered_at = $user->created_at->format('M d, Y');
+    //         unset($user->active_block_exists, $user->created_at);
+
+    //         return $user;
+    //     });
+
+    //     return $this->success('Successfully retrieved user data', $users);
+    // }
    public function blockUser(User $user)
     {
         Log::info('Block user request received');
