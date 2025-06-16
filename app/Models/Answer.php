@@ -7,11 +7,13 @@ use App\Traits\HasReports;
 use App\Traits\HasVotes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Facades\Storage; 
+
 
 class Answer extends Model
 {
-    use HasUuids, HasVotes, HasComments,HasReports;
-    
+    use HasUuids, HasVotes, HasComments, HasReports;
+
     protected $fillable = [
         'vote',
         'answer',
@@ -19,7 +21,7 @@ class Answer extends Model
         'question_id',
         'user_id',
         'verified',
-        
+
     ];
 
     protected $hidden = [
@@ -57,5 +59,14 @@ class Answer extends Model
     public function question()
     {
         return $this->belongsTo(Question::class, 'question_id');
+    }
+
+
+    public function getImageUrlAttribute()
+    {
+        if ($this->image) {
+            return Storage::disk('public')->url($this->image);
+        }
+        return null;
     }
 }

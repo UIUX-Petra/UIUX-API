@@ -93,6 +93,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware(['auth:sanctum'])->group(function () {
         Route::post('/reports/{report}/process', [\App\Http\Controllers\Admin\ReportController::class, 'processReport'])->name('reports.process');
         Route::get('/reports', [ReportController::class, 'index']);
+        Route::get('/content-detail/{type}/{id}', [ReportController::class, 'getContentDetail'])->name('admin.content.detail');
+        
         Route::get('/users/basic-info', [AdminUserController::class, 'getBasicUserInfo'])->name('users.basic-info');
         Route::post('/users/{user}/block', [AdminUserController::class, 'blockUser'])->name('users.block');
         Route::post('/users/{user}/unblock', [AdminUserController::class, 'unblockUser'])->name('users.unblock');
