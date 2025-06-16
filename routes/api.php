@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
+use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\SubjectController as AdminSubjectController;
 use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\AuthController;
@@ -114,5 +115,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('admins', [AdminController::class, 'index'])->name('admins.index');
 
         Route::get('dashboard/report-stats', [DashboardController::class, 'getReportStats'])->name('dashboard.reports');
+        Route::get('dashboard/statistics', [StatisticsController::class, 'getBasicStats'])->name('dashboard.statistics');
     });
 });

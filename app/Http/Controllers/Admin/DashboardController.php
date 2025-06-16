@@ -13,11 +13,6 @@ class DashboardController extends Controller
     public function getReportStats(Request $request)
     {
         try {
-            Log::info('Fetching dashboard report stats.', [
-                'period' => $request->query('period', 'month'), 
-                'admin_id' => auth()->id() ?? 'guest'
-            ]);
-
             $period = $request->validate(['period' => 'in:week,month,year'])['period'] ?? 'month';
             $endDate = Carbon::now();
             $startDate = match ($period) {
@@ -92,17 +87,9 @@ class DashboardController extends Controller
                 ]
             ];
             
-            Log::info('Dashboard data prepared successfully.', ['data' => $responseData]);
-
             return response()->json($responseData);
 
         } catch (\Exception $e) {
-            Log::error('Failed to fetch dashboard report stats.', [
-                'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'admin_id' => auth()->id() ?? 'guest'
-            ]);
-
             return response()->json(['message' => 'An internal error occurred while fetching dashboard data.'], 500);
         }
     }

@@ -47,11 +47,9 @@ class RoleController extends Controller
                 'description' => $validated['description'] ?? null,
             ]);
             
-            Log::info('Role created successfully.', ['id' => $role->id, 'name' => $role->name, 'admin_id' => $this->getAdminId()]);
 
             return response()->json($role->loadCount('admins'), 201);
         } catch (Exception $e) {
-            Log::error('Failed to create role.', ['error' => $e->getMessage(), 'admin_id' => $this->getAdminId()]);
             return response()->json(['message' => 'An error occurred while creating the role.'], 500);
         }
     }
@@ -76,11 +74,9 @@ class RoleController extends Controller
                 'description' => $validated['description'] ?? null,
             ]);
             
-            Log::info('Role updated successfully.', ['id' => $role->id, 'old_name' => $oldName, 'new_name' => $role->name, 'admin_id' => $this->getAdminId()]);
 
             return response()->json($role->loadCount('admins'));
         } catch (Exception $e) {
-            Log::error('Failed to update role.', ['role_id' => $role->id, 'error' => $e->getMessage(), 'admin_id' => $this->getAdminId()]);
             return response()->json(['message' => 'An error occurred while updating the role.'], 500);
         }
     }
@@ -88,12 +84,10 @@ class RoleController extends Controller
     public function destroy(Role $role)
     {
         if ($role->slug === 'super-admin') {
-            Log::warning('Forbidden attempt to delete Super Admin role.', ['role_id' => $role->id, 'admin_id' => $this->getAdminId()]);
             return response()->json(['message' => 'Super Admin role cannot be deleted.'], 403);
         }
 
         if ($role->admins()->count() > 0) {
-            Log::warning('Attempt to delete an in-use role.', ['role_id' => $role->id, 'name' => $role->name, 'admin_count' => $role->admins()->count(), 'admin_id' => $this->getAdminId()]);
             return response()->json(['message' => 'Cannot delete role. It is currently assigned to one or more admins.'], 422);
         }
 
@@ -101,12 +95,8 @@ class RoleController extends Controller
             $roleName = $role->name;
             $roleId = $role->id;
             $role->delete();
-
-            Log::info('Role deleted successfully.', ['id' => $roleId, 'name' => $roleName, 'admin_id' => $this->getAdminId()]);
-
             return response()->json(['message' => 'Role deleted successfully.'], 200);
         } catch (Exception $e) {
-            Log::error('Failed to delete role.', ['role_id' => $role->id, 'error' => $e->getMessage(), 'admin_id' => $this->getAdminId()]);
             return response()->json(['message' => 'An error occurred while deleting the role.'], 500);
         }
     }
@@ -126,11 +116,9 @@ class RoleController extends Controller
 
         try {
             $role->admins()->sync($validated['admin_ids']);
-            Log::info('Synced personnel for role.', ['role_id' => $role->id, 'admin_ids' => $validated['admin_ids'], 'synced_by_admin_id' => $this->getAdminId()]);
             return response()->json(['message' => 'Personnel updated successfully.']);
 
         } catch (Exception $e) {
-            Log::error('Failed to sync personnel.', ['role_id' => $role->id, 'error' => $e->getMessage(), 'admin_id' => $this->getAdminId()]);
             return response()->json(['message' => 'An error occurred while updating personnel.'], 500);
         }
     }
