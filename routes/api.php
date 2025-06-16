@@ -84,7 +84,10 @@ Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
 Route::get('/getLeaderboardByTag/{id}', [UserController::class, 'getLeaderboardByTag']);
 Route::get('/getMostViewed/{email}', [UserController::class, 'getMostViewed']);
-
+Route::get('/export-questions-json', function () {
+    $questions = Question::select('id', 'title', 'question')->get();
+    return response()->json($questions);
+});
 
 // ==========================
 // GRUP ROUTE UNTUK ADMIN API
@@ -123,8 +126,5 @@ Route::prefix('admin')->name('admin.')->group(function () {
          Route::get('/users', [AdminUserController::class, 'getBasicUserInfo'])->name('api.admin.users.index');
          Route::get('/users/{user}/activity', [AdminUserController::class, 'getActivitySummary']);
     });
-    
-Route::get('/export-questions-json', function () {
-    $questions = Question::select('id', 'title', 'question')->get();
-    return response()->json($questions);
 });
+
