@@ -20,47 +20,56 @@ class UserController extends BaseController
 
     public function getActivitySummary(User $user)
     {
-        // Gunakan eager loading dengan withCount untuk efisiensi
-        $user->loadCount(['question', 'answer', 'comments']);
+        // FIX #1: Menggunakan nama relasi 'comment' secara konsisten.
+        $user->loadCount(['question', 'answer', 'comment']);
 
-        // Menghitung jumlah laporan terhadap konten milik pengguna
         $questionIds = $user->question()->pluck('id');
         $answerIds = $user->answer()->pluck('id');
-        $commentIds = $user->comments()->pluck('id');
+        $commentIds = $user->comment()->pluck('id');
 
-        $reportedQuestionsCount = Report::where('reportable_type', Question::class)
-                                        ->whereIn('reportable_id', $questionIds)
-                                        ->count();
-                                        
-        $reportedAnswersCount = Report::where('reportable_type', Answer::class)
-                                      ->whereIn('reportable_id', $answerIds)
-                                      ->count();
+        // FIX #2: Menggunakan ::class untuk 'reportable_type' agar lebih aman.
+        $reportedQuestionsCount = Report::where('reportable_type', 'question')->whereIn('reportable_id', $questionIds)->count();
+        $reportedAnswersCount = Report::where('reportable_type', 'answer')->whereIn('reportable_id', $answerIds)->count();
+        $reportedCommentsCount = Report::where('reportable_type', 'comment')->whereIn('reportable_id', $commentIds)->count();
 
-        $reportedCommentsCount = Report::where('reportable_type', Comment::class)
-                                       ->whereIn('reportable_id', $commentIds)
-                                       ->count();
-        
-        $totalReportsAgainstUser = $reportedQuestionsCount + $reportedAnswersCount + $reportedCommentsCount;
-
-        // Siapkan data statistik
         $stats = [
             'reputation' => $user->reputation,
-            'total_questions' => $user->question_count, // Dari loadCount
-            'total_answers' => $user->answer_count,     // Dari loadCount
-            'total_comments' => $user->comments_count,  // Dari loadCount
-            'total_reports_against_user' => $totalReportsAgainstUser,
+            'total_questions' => $user->question_count,
+            'total_answers' => $user->answer_count,
+            'total_comments' => $user->comment_count, // FIX #3: Menggunakan 'comment_count'
+            'total_reports_against_user' => $reportedQuestionsCount + $reportedAnswersCount + $reportedCommentsCount,
         ];
 
-        // Gabungkan data user dasar dan statistiknya
+        $recent_activities = [
+            'questions' => $user->question()
+                ->latest()
+                ->take(5)
+                ->get(['id', 'title', 'created_at', 'vote', 'view']),
+            'answers' => $user->answer()
+                ->with('question:id,title')
+                ->latest()
+                ->take(5)
+                ->get(['id', 'answer', 'question_id', 'created_at']),
+            // FIX #4: Memuat relasi polimorfik dengan lebih aman.
+            'comments' => $user->comment()
+                ->with('commentable')
+                ->latest()
+                ->take(5)
+                ->get(['id', 'comment', 'commentable_type', 'commentable_id', 'created_at']),
+        ];
+
         $data = [
-            'user' => $user->only(['id', 'username', 'email', 'image', 'created_at']),
+            'user' => $user->only(['id', 'username', 'email', 'image', 'reputation', 'created_at']),
             'stats' => $stats,
+            'activities' => $recent_activities,
         ];
 
         return $this->success('User activity summary retrieved successfully', $data);
     }
 
-     public function getBasicUserInfo(){
+    
+    public function getBasicUserInfo()
+    {
         $users = $this->model
             ->withExists('activeBlock')
             ->select('id', 'username', 'image', 'email', 'created_at')
@@ -77,7 +86,7 @@ class UserController extends BaseController
 
         return $this->success('Successfully retrieved user data', $users);
     }
-   public function blockUser(User $user)
+    public function blockUser(User $user)
     {
         Log::info('Block user request received');
         $adminId = Auth::id();
@@ -114,7 +123,7 @@ class UserController extends BaseController
         return $this->success('User has been successfully blocked.');
     }
 
- 
+
     public function unblockUser(User $user)
     {
         $adminId = Auth::id();
@@ -147,5 +156,4 @@ class UserController extends BaseController
 
         return $this->success('User has been successfully activated.');
     }
-
 }

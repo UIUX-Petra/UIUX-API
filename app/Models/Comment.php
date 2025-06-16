@@ -19,9 +19,9 @@ class Comment extends Model
 
     protected $hidden = [
         'updated_at',
-        'created_at',
-        'commentable_id',
-        'commentable_type'
+        // 'created_at',
+        // 'commentable_id',
+        // 'commentable_type'
     ];
 
     public static function validationRules()

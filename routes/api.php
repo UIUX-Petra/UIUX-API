@@ -116,5 +116,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('dashboard/report-stats', [DashboardController::class, 'getReportStats'])->name('dashboard.reports');
         Route::get('dashboard/statistics', [StatisticsController::class, 'getBasicStats'])->name('dashboard.statistics');
+
+         Route::get('/users', [AdminUserController::class, 'getBasicUserInfo'])->name('api.admin.users.index');
+         Route::get('/users/{user}/activity', [AdminUserController::class, 'getActivitySummary']);
     });
 });
