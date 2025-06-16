@@ -453,12 +453,14 @@ epsilon = 0.1
 learning_rate = 0.01
 TEXT_WEIGHT = 0.7
 IMAGE_WEIGHT = 0.3
-SEED_WEIGHT_NEW_TAG = 1
+SEED_WEIGHT_NEW_TAG = 1.0
 SEED_WEIGHT_JUVENILE_TAG = 0.6
 SEED_WEIGHT_MATURE_TAG = 0.2
-JUVENILE_THRESHOLD = 10
-TAGS_CONFIDENCE_THRESHOLD = 0.8
-MATURITY_THRESHOLD = 100
+JUVENILE_THRESHOLD = 20
+MATURITY_THRESHOLD = 150
+NEW_CONFIDENCE_THRESHOLD = 0.25
+JUVENILE_CONFIDENCE_THRESHOLD = 0.5
+MATURE_CONFIDENCE_THRESHOLD = 0.8
 
 @lru_cache(maxsize=1024)
 def compute_text_embedding(text: str) -> np.ndarray:
@@ -536,28 +538,32 @@ def update_tag_prototypes():
             text_parts = [tag['name']]
             if tag.get('abbreviation'): text_parts.append(tag['abbreviation'])
             if tag.get('description'): text_parts.append(tag['description'])
-            seed_txt = ' '.join(text_parts)
-            seed_text_embedding = compute_text_embedding(seed_txt)
-            if tid in aggregates and aggregates[tid]['texts']:
-                if aggregates[tid]['count'] < JUVENILE_THRESHOLD:
+            seed_text_embedding = compute_text_embedding(' '.join(text_parts))
+            
+            tag_data = aggregates.get(tid)
+            if tag_data and tag_data['texts']:
+                question_count = tag_data['count']
+                if question_count < JUVENILE_THRESHOLD:
                     seed_weight = SEED_WEIGHT_NEW_TAG
-                elif aggregates[tid]['count'] < MATURITY_THRESHOLD:
+                elif question_count < MATURITY_THRESHOLD:
                     seed_weight = SEED_WEIGHT_JUVENILE_TAG
                 else:
                     seed_weight = SEED_WEIGHT_MATURE_TAG
-                history_weight = 1 - seed_weight
-
-                questions_mean_text = np.mean(aggregates[tid]['texts'], axis=0)
+                history_weight = 1.0 - seed_weight
+                questions_mean_text = np.mean(tag_data['texts'], axis=0)
                 hybrid_text_prototype = (seed_weight * seed_text_embedding) + (history_weight * questions_mean_text)
-                hybrid_image_prototype = None
-                if aggregates[tid]['images']:
-                    hybrid_image_prototype = np.mean(aggregates[tid]['images'], axis=0)
+                hybrid_image_prototype = np.mean(tag_data['images'], axis=0) if tag_data['images'] else None
                 new_prototypes[tid] = {
                     'text':  hybrid_text_prototype,
-                    'image': hybrid_image_prototype
+                    'image': hybrid_image_prototype,
+                    'count': question_count
                 }
             else:
-                new_prototypes[tid] = {'text': seed_text_embedding, 'image': None}
+                new_prototypes[tid] = {
+                    'text': seed_text_embedding, 
+                    'image': None,
+                    'count': 0 
+                }
         tag_prototypes = new_prototypes
     print("Tag prototypes updated successfully.")
     
@@ -570,10 +576,13 @@ def get_all_tags_score(txt_emb: np.ndarray, img_emb: np.ndarray):
             t_sim = np.dot(txt_emb, proto['text']) / (np.linalg.norm(txt_emb) * np.linalg.norm(proto['text']))
             i_sim = 0
             if img_emb is not None and proto['image'] is not None:
-                i_sim = np.dot(img_emb, proto['image']) / (np.linalg.norm(img_emb) * np.linalg.norm(proto['image']))
+                norm_img = np.linalg.norm(img_emb)
+                norm_proto = np.linalg.norm(proto['image'])
+                if norm_img > 0 and norm_proto > 0:
+                    i_sim = np.dot(img_emb, proto['image']) / (norm_img * norm_proto)
             score = TEXT_WEIGHT * t_sim + IMAGE_WEIGHT * i_sim
             if np.random.rand() < epsilon: score = score * np.random.rand()
-            scores.append((tid, score))
+            scores.append((tid, score, proto['count']))
     scores.sort(key=lambda x: x[1], reverse=True)
     return scores
 
@@ -582,7 +591,6 @@ def recommend_tags():
     title = request.form.get('title', '')
     question_text = request.form.get('question', '')
     image_file = request.files.get('image')
-    confidence_threshold = float(request.form.get('threshold', TAGS_CONFIDENCE_THRESHOLD))
     
     full_text = title + ' ' + question_text
     txt_emb = compute_text_embedding(full_text)
@@ -595,7 +603,20 @@ def recommend_tags():
     if not all_scored_tags :
         return jsonify(success=True, recommended_tags=[])
     
-    recommended_ids = [tid for tid, score in all_scored_tags if score >= confidence_threshold]
+    recommended_ids = []
+    for tid, score, count in all_scored_tags:
+        if count < JUVENILE_THRESHOLD:
+            dynamic_threshold = NEW_CONFIDENCE_THRESHOLD
+        elif count < MATURITY_THRESHOLD:
+            dynamic_threshold = JUVENILE_CONFIDENCE_THRESHOLD
+        else:
+            dynamic_threshold = MATURE_CONFIDENCE_THRESHOLD
+        if score >= dynamic_threshold:
+            recommended_ids.append(tid)
+    
+    for tid,score,count in all_scored_tags:
+        print(score)
+        
     if not recommended_ids and all_scored_tags:
         best_tag_id = all_scored_tags[0][0] 
         recommended_ids = [best_tag_id]
