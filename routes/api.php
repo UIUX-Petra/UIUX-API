@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\AnnouncementController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SubjectController as AdminSubjectController;
@@ -112,5 +113,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
 
         Route::get('admins', [AdminController::class, 'index'])->name('admins.index');
 
+        Route::get('dashboard/report-stats', [DashboardController::class, 'getReportStats'])->name('dashboard.reports');
     });
 });
