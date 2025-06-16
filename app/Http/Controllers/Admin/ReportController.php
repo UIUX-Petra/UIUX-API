@@ -7,6 +7,7 @@ use App\Http\Resources\ReportResource;
 use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Carbon\Carbon;
 
 class ReportController extends Controller
@@ -37,7 +38,8 @@ class ReportController extends Controller
             if ($request->filled('type')) {
                 $reportsQuery->where('reportable_type', $request->query('type'));
             }
-
+            $status = $request->query('status', 'pending');
+            $reportsQuery->where('status', $status);
             // Filter berdasarkan rentang tanggal
             if ($request->filled('start_date') && $request->filled('end_date')) {
                 $startDate = Carbon::parse($request->query('start_date'))->startOfDay();
@@ -50,14 +52,14 @@ class ReportController extends Controller
                 $search = $request->query('search');
                 $reportsQuery->where(function ($query) use ($search) {
                     $query->where('reason', 'like', "%{$search}%")
-                          ->orWhere('preview', 'like', "%{$search}%") 
-                          ->orWhereHas('user', fn ($q) => $q->where('name', 'like', "%{$search}%"))
-                          ->orWhereHasMorph('reportable', '*', function ($subQuery, $type) use ($search) {
-                                $subQuery->where('content', 'like', "%{$search}%");
-                                if ($type === \App\Models\Question::class) {
-                                    $subQuery->orWhere('title', 'like', "%{$search}%");
-                                }
-                          });
+                        ->orWhere('preview', 'like', "%{$search}%")
+                        ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%{$search}%"))
+                        ->orWhereHasMorph('reportable', '*', function ($subQuery, $type) use ($search) {
+                            $subQuery->where('content', 'like', "%{$search}%");
+                            if ($type === \App\Models\Question::class) {
+                                $subQuery->orWhere('title', 'like', "%{$search}%");
+                            }
+                        });
                 });
             }
 
@@ -65,7 +67,6 @@ class ReportController extends Controller
             $reports = $reportsQuery->latest()->paginate($perPage);
 
             return ReportResource::collection($reports);
-
         } catch (\Exception $e) {
             Log::error('An exception occurred while fetching reports.', [
                 'message' => $e->getMessage(),
@@ -77,41 +78,55 @@ class ReportController extends Controller
         }
     }
 
-     public function processReport(Request $request, Report $report)
+    public function processReport(Request $request, Report $report)
     {
         $request->validate([
             'action' => 'required|string|in:approve,reject',
         ]);
 
+        // Jika report sudah diproses, gak ush lakuin apa-apa
+        if ($report->status !== 'pending') {
+            return response()->json([
+                'success' => false,
+                'message' => 'This report has already been processed.',
+            ], 409); 
+        }
+
         $action = $request->input('action');
-        $reportable = $report->reportable; 
+        $reportable = $report->reportable;
+        $adminId = Auth::id(); // ID admin yang lagi login
 
         Log::info('Processing report.', [
             'report_id' => $report->id,
             'action' => $action,
-            'reportable_type' => $report->reportable_type,
-            'reportable_id' => $report->reportable_id,
+            'admin_id' => $adminId,
         ]);
 
         try {
+            $newStatus = '';
             if ($action === 'approve') {
-                // Logika "Approve": Setujui laporan & hapus konten yang dilaporkan.
+                $newStatus = 'resolved'; // Status jika disetujui
                 if ($reportable) {
+                    // Hapus konten yang dilaporkan
                     $reportable->delete();
                     Log::info('Report approved. Content deleted.', ['report_id' => $report->id]);
-                } else {
-                    Log::warning('Report approved, but content was already deleted.', ['report_id' => $report->id]);
                 }
+            } else { // action === 'reject'
+                $newStatus = 'rejected'; // Status jika ditolak
+                Log::info('Report rejected. Content remains.', ['report_id' => $report->id]);
             }
-            
-            // "approve" dan "reject", laporannya dianggap selesai dan dihapus dari antrian.
-            $report->delete();
+
+            // --- PERUBAHAN UTAMA: UPDATE LAPORAN, BUKAN HAPUS ---
+            $report->update([
+                'status' => $newStatus,
+                'reviewed_by' => $adminId,
+                'reviewed_at' => now(),
+            ]);
 
             return response()->json([
                 'success' => true,
-                'message' => "Report has been successfully {$action}d.",
+                'message' => "Report has been successfully marked as {$newStatus}.",
             ], 200);
-
         } catch (\Exception $e) {
             Log::error('Failed to process report.', [
                 'report_id' => $report->id,

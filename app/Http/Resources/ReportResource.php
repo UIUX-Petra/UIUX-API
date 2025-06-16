@@ -9,11 +9,6 @@ use Illuminate\Support\Str;
 
 class ReportResource extends JsonResource
 {
-    /**
-     * Transform the resource into an array.
-     *
-     * @return array<string, mixed>
-     */
     public function toArray(Request $request): array
     {
         $reportable = $this->whenLoaded('reportable');
@@ -23,7 +18,6 @@ class ReportResource extends JsonResource
         if ($reportable) {
             $type = $reportable->getMorphClass();
 
-            // Handle URL dan konten induk berdasarkan tipe, dengan pengecekan route
             switch ($type) {
                 case 'question':
                     if (Route::has('questions.show')) {
@@ -45,11 +39,11 @@ class ReportResource extends JsonResource
                     break;
 
                 case 'comment':
-                    if ($reportable->commentable && Route::has('questions.show')) {
+                    if ($reportable->commentable) {
                         $parent = $reportable->commentable;
                         $parentType = $parent->getMorphClass();
 
-                        if ($parentType === 'question') {
+                        if ($parentType === 'question' && Route::has('questions.show')) {
                             $questionUrl = route('questions.show', $parent->id);
                             $reportedContentUrl = $questionUrl . '#comment-' . $reportable->id;
                             $parentContent = [
@@ -58,7 +52,7 @@ class ReportResource extends JsonResource
                                 'title' => $parent->title,
                                 'url' => $questionUrl,
                             ];
-                        } elseif ($parentType === 'answer' && $parent->question) {
+                        } elseif ($parentType === 'answer' && $parent->question && Route::has('questions.show')) {
                             $questionUrl = route('questions.show', $parent->question_id);
                             $reportedContentUrl = $questionUrl . '#comment-' . $reportable->id;
                             $parentContent = [
@@ -73,16 +67,26 @@ class ReportResource extends JsonResource
             }
         }
 
+        $preview = '';
+        if ($reportable) {
+            $content = $reportable->comment ?? $reportable->answer ?? $reportable->question ?? $reportable->title ?? '';
+            $preview = Str::limit($content, 150);
+        } else {
+            $preview = 'Content has been deleted.';
+        }
+
+
         return [
             'id' => $this->id,
+            'status' => $this->status, 
             'reason' => $this->reason,
             'date_reported' => $this->created_at->format('d M Y, H:i'),
             'date_for_humans' => $this->created_at->diffForHumans(),
 
             'reported_content' => [
-                'type' => $reportable ? $reportable->getMorphClass() : 'deleted',
+                'type' => $reportable ? Str::ucfirst($reportable->getMorphClass()) : 'Deleted',
                 'id' => $reportable ? $reportable->id : null,
-                'preview' => $reportable ? Str::limit($reportable->content ?? $reportable->title, 150) : 'Content has been deleted.',
+                'preview' => $preview,
                 'url' => $reportedContentUrl,
             ],
 
@@ -90,8 +94,7 @@ class ReportResource extends JsonResource
 
             'reporter' => [
                 'id' => $this->user->id,
-                'name' => $this->user->name,
-                // PERBAIKAN KUNCI: Cek jika route ada sebelum digunakan, jika tidak, gunakan '#'
+                'name' => $this->user->username, 
                 'url' => Route::has('users.profile.show') ? route('users.profile.show', ['user' => $this->user->id]) : '#',
             ],
         ];
