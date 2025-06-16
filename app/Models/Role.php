@@ -14,10 +14,13 @@ class Role extends Model
     protected $fillable = [
         'name',
         'slug',
+        'description',
     ];
 
-    public function admins(): BelongsToMany
+    public function admins()
     {
-        return $this->belongsToMany(Admin::class, 'admin_role');
+        return $this->belongsToMany(Admin::class, 'admin_role')
+                    ->using(AdminRole::class) 
+                    ->withTimestamps();
     }
 }

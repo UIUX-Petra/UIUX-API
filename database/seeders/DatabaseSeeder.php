@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
         $this->call(CommentSeeder::class);
         $this->call(GroupQuestionSeeder::class);
         $this->call(ReportSeeder::class);
+        $this->call(RoleSeeder::class);
         $this->call(AdminSeeder::class);
     }
 }

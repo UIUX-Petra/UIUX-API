@@ -4,6 +4,8 @@ namespace App\Http\Resources;
 
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\JsonResource;
+use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Str;
 
 class ReportResource extends JsonResource
 {
@@ -14,32 +16,83 @@ class ReportResource extends JsonResource
      */
     public function toArray(Request $request): array
     {
-        // Logika untuk menentukan tipe dan judul dari konten yang dilaporkan
-        $relatedToType = match ($this->reportable_type) {
-            \App\Models\Question::class => 'Question',
-            \App\Models\Answer::class   => 'Answer',
-            \App\Models\Comment::class  => 'Comment',
-            default => 'Unknown',
-        };
+        $reportable = $this->whenLoaded('reportable');
+        $parentContent = null;
+        $reportedContentUrl = '#';
 
-        // Mengambil teks utama dari konten terkait
-        $relatedToTitle = $this->reportable->title ?? $this->reportable->answer ?? $this->reportable->comment ?? 'Content not available';
+        if ($reportable) {
+            $type = $reportable->getMorphClass();
+
+            // Handle URL dan konten induk berdasarkan tipe, dengan pengecekan route
+            switch ($type) {
+                case 'question':
+                    if (Route::has('questions.show')) {
+                        $reportedContentUrl = route('questions.show', $reportable->id);
+                    }
+                    break;
+
+                case 'answer':
+                    if ($reportable->question && Route::has('questions.show')) {
+                        $questionUrl = route('questions.show', $reportable->question_id);
+                        $reportedContentUrl = $questionUrl . '#answer-' . $reportable->id;
+                        $parentContent = [
+                            'type' => 'Question',
+                            'id' => $reportable->question->id,
+                            'title' => $reportable->question->title,
+                            'url' => $questionUrl,
+                        ];
+                    }
+                    break;
+
+                case 'comment':
+                    if ($reportable->commentable && Route::has('questions.show')) {
+                        $parent = $reportable->commentable;
+                        $parentType = $parent->getMorphClass();
+
+                        if ($parentType === 'question') {
+                            $questionUrl = route('questions.show', $parent->id);
+                            $reportedContentUrl = $questionUrl . '#comment-' . $reportable->id;
+                            $parentContent = [
+                                'type' => 'Question',
+                                'id' => $parent->id,
+                                'title' => $parent->title,
+                                'url' => $questionUrl,
+                            ];
+                        } elseif ($parentType === 'answer' && $parent->question) {
+                            $questionUrl = route('questions.show', $parent->question_id);
+                            $reportedContentUrl = $questionUrl . '#comment-' . $reportable->id;
+                            $parentContent = [
+                                'type' => 'Answer',
+                                'id' => $parent->id,
+                                'title' => 'Answer to: ' . $parent->question->title,
+                                'url' => $questionUrl . '#answer-' . $parent->id,
+                            ];
+                        }
+                    }
+                    break;
+            }
+        }
 
         return [
             'id' => $this->id,
-            'preview' => $this->preview,
             'reason' => $this->reason,
-            'status' => $this->status,
-            'date_reported' => $this->created_at->diffForHumans(),
+            'date_reported' => $this->created_at->format('d M Y, H:i'),
+            'date_for_humans' => $this->created_at->diffForHumans(),
+
+            'reported_content' => [
+                'type' => $reportable ? $reportable->getMorphClass() : 'deleted',
+                'id' => $reportable ? $reportable->id : null,
+                'preview' => $reportable ? Str::limit($reportable->content ?? $reportable->title, 150) : 'Content has been deleted.',
+                'url' => $reportedContentUrl,
+            ],
+
+            'parent_content' => $parentContent,
+
             'reporter' => [
                 'id' => $this->user->id,
                 'name' => $this->user->name,
-            ],
-            'related_to' => [
-                'type' => $relatedToType,
-                'id' => $this->reportable->id,
-                // Batasi panjang judul/teks agar tidak terlalu panjang di API response
-                'title' => substr($relatedToTitle, 0, 50) . (strlen($relatedToTitle) > 50 ? '...' : ''),
+                // PERBAIKAN KUNCI: Cek jika route ada sebelum digunakan, jika tidak, gunakan '#'
+                'url' => Route::has('users.profile.show') ? route('users.profile.show', ['user' => $this->user->id]) : '#',
             ],
         ];
     }

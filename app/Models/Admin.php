@@ -29,10 +29,13 @@ class Admin extends Authenticatable
     
     protected $hidden =['password'];
 
-    public function roles(): BelongsToMany
+    public function roles()
     {
-        return $this->belongsToMany(Role::class, 'admin_role');
+        return $this->belongsToMany(Role::class, 'admin_role')
+                    ->using(AdminRole::class) 
+                    ->withTimestamps();
     }
+    
     public function announcements(): HasMany
     {
         return $this->hasMany(Announcement::class);

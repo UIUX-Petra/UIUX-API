@@ -5,9 +5,7 @@ namespace Database\Seeders;
 use App\Models\Admin;
 use App\Models\Role;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;   // <-- TAMBAHKAN INI
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Support\Str;           // <-- TAMBAHKAN INI
 
 class AdminSeeder extends Seeder
 {
@@ -16,23 +14,17 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
-        $this->command->info('Membuat Roles...');
+        $this->command->info('Fetching roles to assign...');
+        $superAdminRole = Role::where('slug', 'super-admin')->first();
+        $moderatorRole = Role::where('slug', 'moderator')->first();
 
-        // 1. Buat Roles (Tidak ada perubahan di sini)
-        $superAdminRole = Role::firstOrCreate(
-            ['slug' => 'super-admin'],
-            ['name' => 'Super Admin']
-        );
+        if (!$superAdminRole || !$moderatorRole) {
+            $this->command->error('Default roles (super-admin, moderator) not found. Please run the RoleSeeder first by calling it from DatabaseSeeder.php');
+            return;
+        }
 
-        $moderatorRole = Role::firstOrCreate(
-            ['slug' => 'moderator'],
-            ['name' => 'Moderator']
-        );
+        $this->command->info('Creating default admin accounts...');
 
-        $this->command->info('Roles berhasil dibuat.');
-        $this->command->info('Membuat Admins...');
-
-        // 2. Buat Akun Admin (Tidak ada perubahan di sini)
         $superAdmin = Admin::firstOrCreate(
             ['email' => 'c14230250@john.petra.ac.id'],
             [
@@ -40,7 +32,8 @@ class AdminSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
-        
+        $superAdmin->roles()->syncWithoutDetaching([$superAdminRole->id]);
+
         $moderatorAdmin = Admin::firstOrCreate(
             ['email' => 'moderator@example.com'],
             [
@@ -48,33 +41,9 @@ class AdminSeeder extends Seeder
                 'password' => Hash::make('password'),
             ]
         );
+        // Tugaskan peran Moderator
+        $moderatorAdmin->roles()->syncWithoutDetaching([$moderatorRole->id]);
 
-        $this->command->info('Admins berhasil dibuat.');
-        $this->command->info('Menghubungkan Roles ke Admins...');
-
-     
-        if (!DB::table('admin_role')->where('admin_id', $superAdmin->id)->where('role_id', $superAdminRole->id)->exists()) {
-            DB::table('admin_role')->insert([
-                'id' => Str::uuid(), // Buat UUID baru secara manual
-                'admin_id' => $superAdmin->id,
-                'role_id' => $superAdminRole->id,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-        // Hubungkan Moderator dengan Role Moderator
-        if (!DB::table('admin_role')->where('admin_id', $moderatorAdmin->id)->where('role_id', $moderatorRole->id)->exists()) {
-            DB::table('admin_role')->insert([
-                'id' => Str::uuid(), // Buat UUID baru secara manual
-                'admin_id' => $moderatorAdmin->id,
-                'role_id' => $moderatorRole->id,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-        }
-
-
-        $this->command->info('Proses seeding admin dan role selesai.');
+        $this->command->info('Admin seeding process completed.');
     }
 }

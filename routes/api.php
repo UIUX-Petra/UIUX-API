@@ -1,9 +1,11 @@
 <?php
 
+use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\AnnouncementController;
 use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\SubjectController as AdminSubjectController;
 use App\Http\Controllers\AnswerController;
 use App\Http\Controllers\AuthController;
@@ -84,9 +86,10 @@ Route::get('/getMostViewed/{email}', [UserController::class, 'getMostViewed']);
 // ==========================
 // GRUP ROUTE UNTUK ADMIN API
 // ==========================
-Route::prefix('admin')->group(function () {
+Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('/auth/socialite', [AdminAuthController::class, 'socialiteLogin']);
-    Route::middleware(['auth:sanctum', 'abilities:role:admin'])->group(function () {
+    Route::middleware(['auth:sanctum'])->group(function () {
+        Route::post('/reports/{report}/process', [\App\Http\Controllers\Admin\ReportController::class, 'processReport'])->name('reports.process');
         Route::get('/reports', [ReportController::class, 'index']);
         Route::get('/users/basic-info', [AdminUserController::class, 'getBasicUserInfo'])->name('users.basic-info');
         Route::post('/users/{user}/block', [AdminUserController::class, 'blockUser'])->name('users.block');
@@ -102,5 +105,12 @@ Route::prefix('admin')->group(function () {
         Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroyAnnouncement']);
 
         Route::apiResource('subjects', AdminSubjectController::class);
+
+        Route::apiResource('roles', RoleController::class);
+        Route::get('roles/{role}/admins', [RoleController::class, 'getAssignedAdmins'])->name('roles.admins');
+        Route::post('roles/{role}/sync-admins', [RoleController::class, 'syncAdmins'])->name('roles.sync-admins');
+
+        Route::get('admins', [AdminController::class, 'index'])->name('admins.index');
+
     });
 });

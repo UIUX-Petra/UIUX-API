@@ -15,7 +15,7 @@ class UserSeeder extends Seeder
     {
         $users = [];
 
-        for ($i = 1; $i <= 200; $i++) {
+        for ($i = 1; $i <= 75; $i++) {
             $users[] = [
                 'id' => Str::uuid()->toString(),
                 'username' => "User_$i",
