@@ -16,6 +16,7 @@ use App\Models\Question;
 // });
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/manualLogin', [AuthController::class, 'manualLogin']);
+Route::post('/face-login', [AuthController::class, 'faceLogin']);
 Route::post('/auth/socialite', [AuthController::class, 'socialiteLogin']);
 
 Route::get('/email/verify-pending/{token}', [AuthController::class, 'verifyPendingEmail'])->name('api.email.verify-pending');
@@ -30,6 +31,8 @@ Route::apiResource('comments', CommentController::class);
 Route::apiResource('users', UserController::class);
 
 Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/face-register', [AuthController::class, 'registerFace']);
+
     Route::post('/saveQuestion/{email}/{questionId}', [UserController::class, 'saveQuestion']);
     Route::post('/unsaveQuestion/{email}/{questionId}', [UserController::class, 'unsaveQuestion']);
     Route::get('/getSavedQuestions/{email}', [UserController::class, 'getSavedQuestions']);

@@ -19,6 +19,7 @@ return new class extends Migration
             $table->string('biodata')->nullable();
             $table->string('password')->nullable();
             $table->integer('reputation')->default(0);
+            $table->binary('face_embedding')->nullable();
             $table->timestamp('email_verified_at')->nullable();
             $table->timestamps();
         });
