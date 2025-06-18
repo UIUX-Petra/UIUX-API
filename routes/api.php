@@ -71,6 +71,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
 
     Route::get('/answers-paginated', [AnswerController::class, 'getAnswersPaginated']);
+    Route::get('/announcements/active', [AnnouncementController::class, 'getActiveAnnouncements'])->name('announcements.active');
 
     Route::post('/logout', [AuthController::class, 'logout']);
 });
@@ -98,7 +99,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/reports/{report}/process', [\App\Http\Controllers\Admin\ReportController::class, 'processReport'])->name('reports.process');
         Route::get('/reports', [ReportController::class, 'index']);
         Route::get('/content-detail/{type}/{id}', [ReportController::class, 'getContentDetail'])->name('admin.content.detail');
-        
+
         Route::get('/users/basic-info', [AdminUserController::class, 'getBasicUserInfo'])->name('users.basic-info');
         Route::post('/users/{user}/block', [AdminUserController::class, 'blockUser'])->name('users.block');
         Route::post('/users/{user}/unblock', [AdminUserController::class, 'unblockUser'])->name('users.unblock');
@@ -123,8 +124,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('dashboard/report-stats', [DashboardController::class, 'getReportStats'])->name('dashboard.reports');
         Route::get('dashboard/statistics', [StatisticsController::class, 'getBasicStats'])->name('dashboard.statistics');
 
-         Route::get('/users', [AdminUserController::class, 'getBasicUserInfo'])->name('api.admin.users.index');
-         Route::get('/users/{user}/activity', [AdminUserController::class, 'getActivitySummary']);
+        Route::get('/users', [AdminUserController::class, 'getBasicUserInfo'])->name('api.admin.users.index');
+        Route::get('/users/{user}/activity', [AdminUserController::class, 'getActivitySummary']);
     });
 });
-
