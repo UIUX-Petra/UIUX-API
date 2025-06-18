@@ -23,6 +23,7 @@ return new class extends Migration
             $table->foreign('user_id')->references('id')->on('users')->onDelete('cascade');
             $table->index('report');
             $table->index(['commentable_id', 'commentable_type']);
+            $table->softDeletes();
         });
     }
 

@@ -8,11 +8,13 @@ use App\Traits\HasVotes;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Storage; 
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 
 
 class Answer extends Model
 {
-    use HasUuids, HasVotes, HasComments, HasReports;
+    use HasUuids, HasVotes, HasComments, HasReports, SoftDeletes;
 
     protected $fillable = [
         'vote',

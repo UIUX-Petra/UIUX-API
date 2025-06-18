@@ -26,6 +26,7 @@ return new class extends Migration {
             $table->index('vote');
             $table->index('view');
             $table->index('report');
+            $table->softDeletes();
         });
     }
 

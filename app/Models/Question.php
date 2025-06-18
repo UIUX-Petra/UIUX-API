@@ -6,13 +6,16 @@ use App\Traits\HasComments;
 use App\Traits\HasReports;
 use App\Traits\HasViews;
 use App\Traits\HasVotes;
+
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 
 class Question extends Model
 {
-    use HasUuids, HasVotes, HasViews, HasComments, HasReports;
+    use HasUuids, HasVotes, HasViews, HasComments, HasReports, SoftDeletes;
     protected $fillable = [
         'vote',
         'title',

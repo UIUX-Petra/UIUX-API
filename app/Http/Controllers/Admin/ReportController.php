@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ReportResource;
 use App\Models\Report;
+use App\Models\ReportReason;
 use App\Models\Question;
 use App\Models\Answer;
 use App\Models\Comment;
@@ -15,6 +16,47 @@ use Carbon\Carbon;
 
 class ReportController extends Controller
 {
+    public function getReasons()
+    {
+        try {
+            $reasons = ReportReason::select(['id', 'title', 'description'])->get();
+            return response()->json($reasons);
+        } catch (\Exception $e) {
+            // Log::error('Gagal mengambil alasan laporan: ' . $e->getMessage());
+            return response()->json(['success' => false, 'message' => 'Gagal mengambil data.'], 500);
+        }
+    }
+    public function store(Request $request)
+    {
+        $request->validate([
+            'reportable_id' => 'required|string',
+            'reportable_type' => 'required|string|in:question,answer,comment', 
+            'report_reason_id' => 'required|uuid|exists:report_reasons,id', 
+            'additional_notes' => 'nullable|string|max:1000',
+        ]);
+
+        $modelName = 'App\\Models\\' . ucfirst($request->input('reportable_type'));
+        if (!class_exists($modelName)) {
+            return response()->json(['success' => false, 'message' => 'Tipe konten tidak valid.'], 400);
+        }
+
+        $reportable = $modelName::findOrFail($request->input('reportable_id'));
+
+        if ($reportable->hasBeenReportedByUser(Auth::id())) {
+            return response()->json(['success' => false, 'message' => 'Anda sudah pernah melaporkan konten ini.'], 409);
+        }
+
+        $reportData = [
+            'report_reason_id' => $request->input('report_reason_id'),
+            'additional_notes' => $request->input('additional_notes'),
+            'preview' => substr($reportable->content ?? $reportable->title, 0, 150) . '...'
+        ];
+
+        $reportable->report(Auth::id(), $reportData);
+
+        return response()->json(['success' => true, 'message' => 'Laporan Anda telah dikirim.'], 201);
+    }
+
     public function index(Request $request)
     {
         try {
@@ -27,16 +69,20 @@ class ReportController extends Controller
             ]);
 
             $reportsQuery = Report::with([
-                'user',
+                'user:id,username,image',
+                'reason:id,title', 
+                'reviewer:id,name',
                 'reportable' => function ($morphTo) {
                     $morphTo->morphWith([
-                        \App\Models\Question::class => ['user'],
-                        \App\Models\Answer::class => ['user', 'question'],
-                        \App\Models\Comment::class => ['user', 'commentable'],
+                        \App\Models\Question::class => ['user:id,username'],
+                        \App\Models\Answer::class => ['user:id,username', 'question:id,title'],
+                        \App\Models\Comment::class => ['user:id,username'],
                     ]);
                 },
             ]);
-
+            if ($request->filled('reason_id')) {
+                $reportsQuery->where('report_reason_id', $request->query('reason_id'));
+            }
             // Filter berdasarkan tipe
             if ($request->filled('type')) {
                 $reportsQuery->where('reportable_type', $request->query('type'));
@@ -54,14 +100,16 @@ class ReportController extends Controller
             if ($request->filled('search')) {
                 $search = $request->query('search');
                 $reportsQuery->where(function ($query) use ($search) {
-                    $query->where('reason', 'like', "%{$search}%")
-                        ->orWhere('preview', 'like', "%{$search}%")
+                    $query->where('preview', 'like', "%{$search}%")
+                        ->orWhere('additional_notes', 'like', "%{$search}%")
+                        // Cari berdasarkan nama pelapor
                         ->orWhereHas('user', fn($q) => $q->where('name', 'like', "%{$search}%"))
-                        ->orWhereHasMorph('reportable', '*', function ($subQuery, $type) use ($search) {
-                            $subQuery->where('content', 'like', "%{$search}%");
-                            if ($type === \App\Models\Question::class) {
-                                $subQuery->orWhere('title', 'like', "%{$search}%");
-                            }
+                        // Cari berdasarkan judul alasan
+                        ->orWhereHas('reason', fn($q) => $q->where('title', 'like', "%{$search}%"))
+                        // Cari di konten yang dilaporkan
+                        ->orWhereHasMorph('reportable', '*', function ($subQuery) use ($search) {
+                            $subQuery->where('content', 'like', "%{$search}%")
+                                ->orWhere('title', 'like', "%{$search}%"); // Untuk Question
                         });
                 });
             }
@@ -71,73 +119,74 @@ class ReportController extends Controller
 
             return ReportResource::collection($reports);
         } catch (\Exception $e) {
-            Log::error('An exception occurred while fetching reports.', [
-                'message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-            ]);
+            // Log::error('An exception occurred while fetching reports.', [
+            //     'message' => $e->getMessage(),
+            //     'file' => $e->getFile(),
+            //     'line' => $e->getLine(),
+            // ]);
 
             return response()->json(['success' => false, 'message' => 'An internal server error occurred.'], 500);
         }
     }
 
     public function processReport(Request $request, Report $report)
-    {
-        $request->validate([
-            'action' => 'required|string|in:approve,reject',
-        ]);
+{
+    $request->validate([
+        'action' => 'required|string|in:approve,reject',
+    ]);
 
-        // Jika report sudah diproses, gak ush lakuin apa-apa
-        if ($report->status !== 'pending') {
-            return response()->json([
-                'success' => false,
-                'message' => 'This report has already been processed.',
-            ], 409); 
-        }
-
-        $action = $request->input('action');
-        $reportable = $report->reportable;
-        $adminId = Auth::id(); 
-
-        Log::info('Processing report.', [
-            'report_id' => $report->id,
-            'action' => $action,
-            'admin_id' => $adminId,
-        ]);
-
-        try {
-            $newStatus = '';
-            if ($action === 'approve') {
-                $newStatus = 'resolved'; // Status jika disetujui
-                if ($reportable) {
-                    // Hapus konten yang dilaporkan
-                    $reportable->delete();
-                    Log::info('Report approved. Content deleted.', ['report_id' => $report->id]);
-                }
-            } else { // action === 'reject'
-                $newStatus = 'rejected'; // Status jika ditolak
-                Log::info('Report rejected. Content remains.', ['report_id' => $report->id]);
-            }
-
-            $report->update([
-                'status' => $newStatus,
-                'reviewed_by' => $adminId,
-                'reviewed_at' => now(),
-            ]);
-
-            return response()->json([
-                'success' => true,
-                'message' => "Report has been successfully marked as {$newStatus}.",
-            ], 200);
-        } catch (\Exception $e) {
-            // Log::error('Failed to process report.', [
-            //     'report_id' => $report->id,
-            //     'error' => $e->getMessage(),
-            // ]);
-            return response()->json(['success' => false, 'message' => 'Failed to process report.'], 500);
-        }
+    if ($report->status !== 'pending') {
+        return response()->json([
+            'success' => false,
+            'message' => 'This report has already been processed.',
+        ], 409);
     }
-  public function getContentDetail(string $type, string $id)
+
+    $action = $request->input('action');
+    $reportable = $report->reportable;
+    $adminId = Auth::id();
+
+    // Log::info('Processing report.', [
+    //     'report_id' => $report->id,
+    //     'action' => $action,
+    //     'admin_id' => $adminId,
+    // ]);
+
+    try {
+        $newStatus = ($action === 'approve') ? 'resolved' : 'rejected';
+
+        $report->update([
+            'status' => $newStatus,
+            'reviewed_by' => $adminId,
+            'reviewed_at' => now(),
+        ]);
+        Log::info("Report {$report->id} status updated to {$newStatus}.");
+
+
+        if ($action === 'approve') {
+            if ($reportable) {
+                $reportable->delete();
+                // Log::info('Report approved. Content deleted.', ['report_id' => $report->id]);
+            }
+        } else { // action === 'reject'
+            // Log::info('Report rejected. Content remains.', ['report_id' => $report->id]);
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => "Report has been successfully marked as {$newStatus}.",
+        ], 200);
+
+    } catch (\Exception $e) {
+        // Log::error('Failed to process report.', [
+        //     'report_id' => $report->id,
+        //     'error' => $e->getMessage(),
+        //     'trace' => $e->getTraceAsString() 
+        // ]);
+        return response()->json(['success' => false, 'message' => 'Failed to process report.'], 500);
+    }
+}
+    public function getContentDetail(string $type, string $id)
     {
         // Log::info("START: Fetching content detail.", ['type' => $type, 'id' => $id]);
 
@@ -154,14 +203,14 @@ class ReportController extends Controller
                         'answer' => function ($query) {
                             // Log::debug("Building 'answer' subquery for Question.");
                             $query->with(['user', 'comment.user'])
-                                  ->withCount(['reports'])
-                                  ->orderBy('verified', 'desc')
-                                  ->orderBy('vote', 'desc') 
-                                  ->limit(3);
+                                ->withCount(['reports'])
+                                ->orderBy('verified', 'desc')
+                                ->orderBy('vote', 'desc')
+                                ->limit(3);
                         }
                     ])
-                    ->withCount(['comment'])
-                    ->findOrFail($id);
+                        ->withCount(['comment'])
+                        ->findOrFail($id);
                     // Log::info("SUCCESS: Found Question.", ['id' => $id, 'answers_loaded' => $data->answer->count()]);
                     break;
 
@@ -185,11 +234,10 @@ class ReportController extends Controller
                     return response()->json(['message' => 'Invalid content type provided.'], 400);
             }
 
-            $data->type = $safeType; 
+            $data->type = $safeType;
 
             // Log::info("END: Successfully fetched and prepared content detail.", ['type' => $safeType, 'id' => $id]);
             return response()->json($data);
-
         } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
             // Log::error("EXCEPTION: Content not found in getContentDetail.", [
             //     'type' => $type, 

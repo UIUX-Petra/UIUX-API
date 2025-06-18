@@ -3,7 +3,7 @@
 use App\Http\Controllers\Admin\AdminController;
 use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
-use App\Http\Controllers\Admin\AnnouncementController;
+use App\Http\Controllers\Admin\AnnouncementController as AdminAnnouncementController;
 use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ReportController;
 use App\Http\Controllers\Admin\RoleController;
@@ -18,6 +18,7 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SubjectController;
+use App\Http\Controllers\AnnouncementController;
 use App\Models\Question;
 
 // Route::get('/', function () {
@@ -37,47 +38,47 @@ Route::post('/email/verification-notification', [AuthController::class, 'resendV
 Route::get('/userWithRecommendation', [UserController::class, 'getUserWithRecommendation']);
 Route::get('/user-questions/{userId}', [QuestionController::class, 'getUserQuestionsWithCount']);
 Route::apiResource('comments', CommentController::class);
-// Route::apiResource('users', UserController::class);
+Route::apiResource('users', UserController::class);
 
-Route::middleware(['auth:sanctum'])->group(function () {
-    Route::post('/face-register', [AuthController::class, 'registerFace']);
+// Route::middleware(['auth:sanctum'])->group(function () {
+Route::post('/face-register', [AuthController::class, 'registerFace']);
 
-    Route::post('/saveQuestion/{email}/{questionId}', [UserController::class, 'saveQuestion']);
-    Route::post('/unsaveQuestion/{email}/{questionId}', [UserController::class, 'unsaveQuestion']);
-    Route::get('/getSavedQuestions/{email}', [UserController::class, 'getSavedQuestions']);
-    Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
-    Route::apiResource('questions', QuestionController::class);
-    Route::post('questions/{id}/updatePartial', [QuestionController::class, 'updatePartial']);
-    Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
-    Route::get('/questions-paginated-home', [QuestionController::class, 'getQuestionPaginatedHome']);
+Route::post('/saveQuestion/{email}/{questionId}', [UserController::class, 'saveQuestion']);
+Route::post('/unsaveQuestion/{email}/{questionId}', [UserController::class, 'unsaveQuestion']);
+Route::get('/getSavedQuestions/{email}', [UserController::class, 'getSavedQuestions']);
+Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
+Route::apiResource('questions', QuestionController::class);
+Route::post('questions/{id}/updatePartial', [QuestionController::class, 'updatePartial']);
+Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
+Route::get('/questions-paginated-home', [QuestionController::class, 'getQuestionPaginatedHome']);
 
-    Route::apiResource('answers', AnswerController::class);
-    Route::post('answers/{id}/updatePartial', [AnswerController::class, 'updatePartial']);
+Route::apiResource('answers', AnswerController::class);
+Route::post('answers/{id}/updatePartial', [AnswerController::class, 'updatePartial']);
 
-    Route::apiResource('tags', SubjectController::class);
-    Route::get('/tagOnly', [SubjectController::class, 'tagOnly']);
+Route::apiResource('tags', SubjectController::class);
+Route::get('/tagOnly', [SubjectController::class, 'tagOnly']);
+Route::get('/tags', [SubjectController::class, 'index']);
 
-    Route::apiResource('comments', CommentController::class);
+Route::apiResource('comments', CommentController::class);
 
-    Route::apiResource('users', UserController::class);
-    Route::post('/users/{email}/follow', [UserController::class, 'follow']);
-    Route::get('/users/{userId}/questions', [UserController::class, 'getUserQuestions']);
-    Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
-    Route::get('/userTags', [UserController::class, 'getUserTags']);
+Route::apiResource('users', UserController::class);
+Route::post('/users/{email}/follow', [UserController::class, 'follow']);
+Route::get('/users/{userId}/questions', [UserController::class, 'getUserQuestions']);
+Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
+Route::get('/userTags', [UserController::class, 'getUserTags']);
 
-    // getUserQuestionsWithCount 
-    Route::post('/users/editProfileDULU', [UserController::class, 'editProfileUser']);
+// getUserQuestionsWithCount 
+Route::post('/users/editProfileDULU', [UserController::class, 'editProfileUser']);
 
-    Route::post('questions/{id}/upvote', [QuestionController::class, 'upvoteQuestion']);
-    Route::post('questions/{id}/downvote', [QuestionController::class, 'downvoteQuestion']);
-    Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
-    Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
+Route::post('questions/{id}/upvote', [QuestionController::class, 'upvoteQuestion']);
+Route::post('questions/{id}/downvote', [QuestionController::class, 'downvoteQuestion']);
+Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
+Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
 
-    Route::get('/answers-paginated', [AnswerController::class, 'getAnswersPaginated']);
-    Route::get('/announcements/active', [AnnouncementController::class, 'getActiveAnnouncements'])->name('announcements.active');
+Route::get('/answers-paginated', [AnswerController::class, 'getAnswersPaginated']);
 
-    Route::post('/logout', [AuthController::class, 'logout']);
-});
+Route::post('/logout', [AuthController::class, 'logout']);
+// });
 Route::get('/search', [SearchController::class, 'search']);
 
 Route::apiResource('histories', HistoryController::class);
@@ -88,11 +89,13 @@ Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
 Route::get('/getLeaderboardByTag/{id}', [UserController::class, 'getLeaderboardByTag']);
 Route::get('/getMostViewed/{email}', [UserController::class, 'getMostViewed']);
+
+Route::get('/announcements/active', [AnnouncementController::class, 'getActiveAnnouncements'])->name('announcements.active');
+
 Route::get('/export-questions-json', function () {
     $questions = Question::select('id', 'title', 'question')->get();
     return response()->json($questions);
 });
-
 // ==========================
 // GRUP ROUTE UNTUK ADMIN API
 // ==========================
@@ -102,7 +105,8 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::post('/reports/{report}/process', [\App\Http\Controllers\Admin\ReportController::class, 'processReport'])->name('reports.process');
         Route::get('/reports', [ReportController::class, 'index']);
         Route::get('/content-detail/{type}/{id}', [ReportController::class, 'getContentDetail'])->name('admin.content.detail');
-
+        Route::get('/report-reasons', [ReportController::class, 'getReasons']);
+        
         Route::get('/users/basic-info', [AdminUserController::class, 'getBasicUserInfo'])->name('users.basic-info');
         Route::post('/users/{user}/block', [AdminUserController::class, 'blockUser'])->name('users.block');
         Route::post('/users/{user}/unblock', [AdminUserController::class, 'unblockUser'])->name('users.unblock');
@@ -110,11 +114,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::get('/me', [AdminAuthController::class, 'me']);
 
         // announcements
-        Route::get('/announcements', [AnnouncementController::class, 'index']);
-        Route::post('/announcements', [AnnouncementController::class, 'store']);
-        Route::get('/announcements/{announcement}', [AnnouncementController::class, 'showDetail']);
-        Route::put('/announcements/{announcement}', [AnnouncementController::class, 'updateDetail']);
-        Route::delete('/announcements/{announcement}', [AnnouncementController::class, 'destroyAnnouncement']);
+        Route::get('/announcements', [AdminAnnouncementController::class, 'index']);
+        Route::post('/announcements', [AdminAnnouncementController::class, 'store']);
+        Route::get('/announcements/{announcement}', [AdminAnnouncementController::class, 'showDetail']);
+        Route::put('/announcements/{announcement}', [AdminAnnouncementController::class, 'updateDetail']);
+        Route::delete('/announcements/{announcement}', [AdminAnnouncementController::class, 'destroyAnnouncement']);
 
         Route::apiResource('subjects', AdminSubjectController::class);
 

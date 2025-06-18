@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\BaseController;
 use App\Models\Announcement;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Jobs\SendAnnouncementEmail;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
@@ -107,26 +106,5 @@ class AnnouncementController extends BaseController
         return $this->success('Announcement deleted successfully.', null, 204);
     }
 
-    public function getActiveAnnouncements(): JsonResponse
-    {
-        try {
-            $announcements = Announcement::where('display_on_web', true)
-                ->where('status', 'published')
-                ->orderBy('published_at', 'desc')
-                ->select('title', 'detail') // Hanya ambil kolom yang dibutuhkan
-                ->get();
-
-            return response()->json([
-                'success' => true,
-                'data' => $announcements,
-            ]);
-        } catch (\Exception $e) {
-            // Mengembalikan response error jika terjadi masalah
-            return response()->json([
-                'success' => false,
-                'message' => 'Gagal mengambil data pengumuman.',
-                'error' => $e->getMessage()
-            ], 500);
-        }
-    }
+ 
 }

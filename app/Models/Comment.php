@@ -5,10 +5,12 @@ namespace App\Models;
 use App\Traits\HasReports;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
 
 class Comment extends Model
 {
-    use HasUuids, HasReports;
+    use HasUuids, HasReports, SoftDeletes;
 
     protected $fillable = [
         'user_id',
