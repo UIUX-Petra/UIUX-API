@@ -6,6 +6,8 @@ use App\Mail\VerifyPendingRegistrationMail;
 use App\Models\PendingUser;
 use App\Models\User;
 use App\Utils\HttpResponseCode;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Facades\Hash;
@@ -392,7 +394,6 @@ class AuthController extends BaseController
         return response()->json(['message' => 'Email verified successfully! You can now login.'], 200);
     }
 
-    // Your existing resend for Laravel's default
     public function resendVerificationEmail(Request $request)
     {
         $validator = Validator::make($request->all(), ['email' => 'required|email']);
@@ -422,5 +423,70 @@ class AuthController extends BaseController
             return $this->success('Logged out successfully.');
         }
         return $this->error('Unauthenticated.', HttpResponseCode::HTTP_UNAUTHORIZED);
+    }
+
+    private function getAiServiceUrl(): string
+    {
+        return rtrim(env('AI_SERVICE_URL', 'http://127.0.0.1:5000/ai'), '/');
+    }
+
+    public function registerFace(Request $request)
+    {
+        $request->validate([
+            'images' => 'required|array|min:1',
+            'images.*' => 'required|string',
+        ]);
+
+        $userId = Auth::id();
+        if (!$userId) {
+            return $this->error('Unauthenticated.', HttpResponseCode::HTTP_UNAUTHORIZED);
+        }
+
+        $response = Http::timeout(30)->post($this->getAiServiceUrl() . '/register_face', [
+            'user_id' => $userId,
+            'images' => $request->input('images'),
+        ]);
+
+        return $response->json();
+    }
+
+    public function faceLogin(Request $request)
+    {
+        $request->validate([
+            'image' => 'required|string',
+        ]);
+
+        $response = Http::timeout(30)->post($this->getAiServiceUrl() . '/login_face', [
+            'image' => $request->input('image'),
+        ]);
+
+        if ($response->failed() || !$response->json('success')) {
+            return $this->error(
+                $response->json('message') ?? 'Face not recognized by the AI service.',
+                HttpResponseCode::HTTP_UNAUTHORIZED
+            );
+        }
+
+        $userId = $response->json('user_id');
+        $user = User::find($userId);
+
+        if (!$user) {
+            return $this->error(
+                'Face recognized, but the corresponding user account was not found in our system.',
+                HttpResponseCode::HTTP_NOT_FOUND
+            );
+        }
+        $user->tokens()->delete();
+        $userToken = $user->createToken('user_token', ['user'])->plainTextToken;
+        return $this->success(
+            'Login successful!',
+            [
+                'id' => $user->id,
+                'name' => $user->username,
+                'email' => $user->email,
+                'token' => $userToken,
+                'reputation' => $user->reputation
+            ]
+        );
     }
 }

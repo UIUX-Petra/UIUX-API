@@ -7,3 +7,12 @@ torchvision
 numpy
 Pillow
 python-dotenv
+deepface 
+opencv-python
+tf-keras
+Sastrawi
+spacy
+langdetect
+fuzzywuzzy
+xgboost
+python-Levenshtein

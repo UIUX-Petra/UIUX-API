@@ -4,10 +4,12 @@ from torchvision import models, transforms
 from torchvision.models import ResNet50_Weights
 from PIL import Image
 import torch
-import werkzeug.utils
+import base64
 import numpy as np
+import pandas as pd
 import threading, time
 import os
+import re
 from mysql.connector import pooling, Error
 import time
 from datetime import timedelta
@@ -15,6 +17,15 @@ import heapq
 from dotenv import load_dotenv
 from flask_cors import CORS
 from functools import lru_cache
+from deepface import DeepFace
+import cv2
+import joblib
+from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
+from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
+import spacy
+from langdetect import detect
+from langdetect.lang_detect_exception import LangDetectException
+from fuzzywuzzy import fuzz
 
 app = Flask(__name__)
 load_dotenv()
@@ -137,10 +148,11 @@ leaderboard = Leaderboard()
 conn_pool = pooling.MySQLConnectionPool(
     pool_name="mypool",
     pool_size=10,
-    host='127.0.0.1',
-    user='root',
-    password='', 
-    database='uiux_project'
+    host=os.getenv('DB_HOST', '127.0.0.1'),
+    user=os.getenv('DB_USERNAME', 'root'),
+    password=os.getenv('DB_PASSWORD', ''),
+    database=os.getenv('DB_DATABASE', 'uiux_project'),
+    port=os.getenv('DB_PORT', 3306)
 )
 
 
@@ -186,7 +198,7 @@ def build_user_views_from_db():
         buffered_last_synced_at = (max_last_updated + timedelta(seconds=1)).strftime('%Y-%m-%d %H:%M:%S')
         user_view_stat.update_last_synced_at(buffered_last_synced_at)
 
-def periodic_data_refresh(interval=2):
+def periodic_data_refresh(interval=30):
     while True:
         build_user_views_from_db()
         time.sleep(interval)
@@ -435,9 +447,7 @@ def leaderboard_api():
 
 
 #AIML (Artificial Intelligence and Machine Learning)
-bp = Blueprint('tag_recommender', __name__, url_prefix='/ai')
-CORS(app, resources={r"/ai/*": {"origins": "http://localhost:8000"}})
-
+# --- Universal Text/Image Models ---
 text_model = SentenceTransformer('paraphrase-multilingual-MiniLM-L12-v2')
 resnet = models.resnet50(weights=ResNet50_Weights.DEFAULT)
 image_model = torch.nn.Sequential(*list(resnet.children())[:-1]).eval()
@@ -446,6 +456,47 @@ preprocess = transforms.Compose([
     transforms.ToTensor(),
     transforms.Normalize(mean=[0.485,0.456,0.406], std=[0.229,0.224,0.225])
 ])
+
+try:
+    stemmer_id = StemmerFactory().create_stemmer()
+    stopword_remover_id = StopWordRemoverFactory().create_stop_word_remover()
+    nlp_en = spacy.load("en_core_web_sm")
+    print("Successfully loaded Sastrawi and spaCy models.")
+except Exception as e:
+    print(f"ERROR loading NLP helper models: {e}")
+    stemmer_id, stopword_remover_id, nlp_en = None, None, None
+
+def simple_preprocess(text: str) -> str:
+    if not isinstance(text, str): return ""
+    text = text.lower()
+    text = re.sub(r'<.*?>', '', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+def detect_language(text: str) -> str:
+    try:
+        if text and len(text.strip()) > 10: return detect(text)
+        return "unknown"
+    except LangDetectException:
+        return "unknown"
+
+def multilingual_preprocess(text: str) -> str:
+    cleaned_text = simple_preprocess(text)
+    if not cleaned_text: return ""
+    lang = detect_language(cleaned_text)
+    if lang == 'id' and stemmer_id and stopword_remover_id:
+        stemmed_text = stemmer_id.stem(cleaned_text)
+        return stopword_remover_id.remove(stemmed_text)
+    elif lang == 'en' and nlp_en:
+        doc = nlp_en(cleaned_text)
+        tokens = [token.lemma_ for token in doc if not token.is_stop and not token.is_punct]
+        return " ".join(tokens)
+    else:
+        return cleaned_text
+    
+#tag-recommender
+tag_bp = Blueprint('tag_recommender', __name__, url_prefix='/ai')
+CORS(app, resources={r"/ai/*": {"origins": "http://localhost:8000"}})
 
 tag_prototypes = {}
 model_lock = threading.Lock()
@@ -508,7 +559,7 @@ def process_and_store_embeddings(question_id: str):
     cur.close(); conn.close()
     print(f"Stored embeddings for question {question_id}.")
 
-def update_tag_prototypes():
+def update_tag_model():
     conn = conn_pool.get_connection()
     cur = conn.cursor(dictionary=True)
     cur.execute("""
@@ -586,7 +637,7 @@ def get_all_tags_score(txt_emb: np.ndarray, img_emb: np.ndarray):
     scores.sort(key=lambda x: x[1], reverse=True)
     return scores
 
-@bp.route('/recommend_tags', methods=['POST'])
+@tag_bp.route('/recommend_tags', methods=['POST'])
 def recommend_tags():
     title = request.form.get('title', '')
     question_text = request.form.get('question', '')
@@ -630,7 +681,7 @@ def recommend_tags():
     response_data = [{"id": tid, "name": tags_from_db.get(tid, "Unknown Tag")} for tid in recommended_ids]
     return jsonify(success=True, recommended_tags=response_data)
 
-@bp.route('/process_embeddings', methods=['POST'])
+@tag_bp.route('/process_embeddings', methods=['POST'])
 def trigger_embedding_processing():
     data = request.json
     qid = data.get('question_id')
@@ -642,7 +693,7 @@ def trigger_embedding_processing():
     except Exception as e:
         return jsonify(success=False, message=f"Failed to start embedding process: {e}"), 500
 
-@bp.route('/tag_feedback', methods=['POST'])
+@tag_bp.route('/tag_feedback', methods=['POST'])
 def tag_feedback():
     title = request.form.get('title', '')
     question_text = request.form.get('question', '')
@@ -683,27 +734,356 @@ def tag_feedback():
         print(f"Error in tag_feedback: {e}")
         return jsonify(success=False, message=f"An error occurred: {e}"), 500
             
-def monitor_prototypes_db(interval=300):
+def monitor_tag_model_db(interval=300):
     while True:
         try:
-            print("Starting periodic update of tag prototypes...")
-            update_tag_prototypes()
+            print("Starting periodic update of tag model...")
+            update_tag_model()
             time.sleep(interval)
         except Exception as e:
             print(f"Error during periodic prototype update: {e}")
             time.sleep(60)
+            
+#face-recognition  
+face_bp = Blueprint('face_auth', __name__, url_prefix='/ai')
+MODEL_NAME = 'VGG-Face'
+DISTANCE_METRIC = 'cosine'
+DISTANCE_THRESHOLD = 0.4
+
+def b64_to_image(b64_string):
+    if "," in b64_string:
+        b64_string = b64_string.split(',')[1]
+    img_bytes = base64.b64decode(b64_string)
+    img_array = np.frombuffer(img_bytes, dtype=np.uint8)
+    image = cv2.imdecode(img_array, cv2.IMREAD_COLOR)
+    return image
+
+@face_bp.route('/register_face', methods=['POST'])
+def register_face():
+    if not conn_pool:
+        return jsonify(success=False, message="Database connection not available."), 500
+
+    data = request.json
+    user_id = data.get('user_id')
+    image_b64_list = data.get('images')
+
+    if not user_id or not image_b64_list:
+        return jsonify(success=False, message="user_id and a list of images are required."), 400
+
+    embeddings = []
+    for image_b64 in image_b64_list:
+        try:
+            image = b64_to_image(image_b64)
+            embedding_obj = DeepFace.represent(
+                img_path=image,
+                model_name=MODEL_NAME,
+                enforce_detection=True
+            )
+            embeddings.append(embedding_obj[0]["embedding"])
+        except ValueError as e:
+            print(f"No face detected in one of the registration images for user {user_id}. Skipping. Error: {e}")
+            continue
+
+    if not embeddings:
+        return jsonify(success=False, message="Could not detect a face in any of the provided images."), 400
+
+    avg_embedding = np.mean(embeddings, axis=0).astype(np.float32)
+
+    try:
+        conn = conn_pool.get_connection()
+        cur = conn.cursor()
+        
+        cur.execute(
+            "UPDATE users SET face_embedding = %s WHERE id = %s",
+            (avg_embedding.tobytes(), user_id)
+        )
+        conn.commit()
+
+        if cur.rowcount == 0:
+            return jsonify(success=False, message=f"User with ID {user_id} not found."), 404
+        
+        print(f"Successfully registered and stored face embedding for user: {user_id}")
+        return jsonify(success=True, message=f"Face registered successfully for user {user_id}.")
+
+    except Exception as e:
+        print(f"Database error during face registration: {e}")
+        return jsonify(success=False, message="An internal error occurred during registration."), 500
+    finally:
+        if 'conn' in locals() and conn.is_connected():
+            cur.close()
+            conn.close()
+
+@face_bp.route('/login_face', methods=['POST'])
+def login_face():
+    """
+    Authenticates a user by comparing their face to all registered faces in the database.
+    Expects: { "image": "b64_img" }
+    """
+    if not conn_pool:
+        return jsonify(success=False, message="Database connection not available."), 500
+
+    data = request.json
+    image_b64 = data.get('image')
+
+    if not image_b64:
+        return jsonify(success=False, message="Image is required."), 400
+
+    try:
+        login_image = b64_to_image(image_b64)
+        login_embedding_obj = DeepFace.represent(
+            img_path=login_image,
+            model_name=MODEL_NAME,
+            enforce_detection=True
+        )
+        login_embedding = np.array(login_embedding_obj[0]["embedding"], dtype=np.float32)
+    except ValueError:
+        return jsonify(success=False, message="No face detected in the login image."), 400
+
+    try:
+        conn = conn_pool.get_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        cur.execute("SELECT id, username, face_embedding FROM users WHERE face_embedding IS NOT NULL")
+        registered_users = cur.fetchall()
+
+        if not registered_users:
+            return jsonify(success=False, message="No users are registered for face login."), 404
+
+    except Exception as e:
+        print(f"Database error during face login: {e}")
+        return jsonify(success=False, message="An internal error occurred."), 500
+    finally:
+        if 'conn' in locals() and conn.is_connected():
+            cur.close()
+            conn.close()
+            
+    best_match_user = None
+    min_distance = float('inf')
+
+    for user in registered_users:
+        stored_embedding = np.frombuffer(user['face_embedding'], dtype=np.float32)
+        distance = DeepFace.dst.findCosineDistance(login_embedding, stored_embedding)
+
+        if distance < min_distance:
+            min_distance = distance
+            best_match_user = user
+
+    if best_match_user and min_distance <= DISTANCE_THRESHOLD:
+        print(f"Face match found for user {best_match_user['username']} with distance {min_distance}")
+        return jsonify(
+            success=True,
+            message=f"Login successful. Welcome, {best_match_user['username']}!",
+            user_id=best_match_user['id'],
+            username=best_match_user['username'],
+            distance=min_distance
+        )
+    else:
+        print(f"No suitable match found. Closest distance was {min_distance}")
+        return jsonify(success=False, message="Face not recognized or does not match any user.")
+
+#question-similarity
+try:
+    duplicate_classifier_model = joblib.load('duplicate_classifier_model.pkl')
+    stemmer_id = StemmerFactory().create_stemmer()
+    stopword_remover_id = StopWordRemoverFactory().create_stop_word_remover()
+    nlp_en = spacy.load("en_core_web_sm")
+    print("Successfully loaded duplicate detection models.")
+except Exception as e:
+    print(f"ERROR loading duplicate detection models: {e}")
+    duplicate_classifier_model = None
+
+def simple_preprocess(text: str) -> str:
+    if not isinstance(text, str): return ""
+    text = text.lower()
+    text = re.sub(r'<.*?>', '', text)
+    text = re.sub(r'\s+', ' ', text).strip()
+    return text
+
+def detect_language(text: str) -> str:
+    try:
+        if text and len(text.strip()) > 10: return detect(text)
+        return "unknown"
+    except LangDetectException:
+        return "unknown"
+
+def multilingual_preprocess(text: str) -> str:
+    cleaned_text = simple_preprocess(text)
+    if not cleaned_text: return ""
+    lang = detect_language(cleaned_text)
+    if lang == 'id':
+        stemmed_text = stemmer_id.stem(cleaned_text)
+        return stopword_remover_id.remove(stemmed_text)
+    elif lang == 'en':
+        doc = nlp_en(cleaned_text)
+        tokens = [token.lemma_ for token in doc if not token.is_stop and not token.is_punct]
+        return " ".join(tokens)
+    else:
+        return cleaned_text
+
+def jaccard_similarity(list1, list2):
+    s1 = set(list1)
+    s2 = set(list2)
+    if not s1 and not s2: return 0.0
+    return len(s1.intersection(s2)) / len(s1.union(s2))
+
+def get_image_embedding_from_path(image_path_suffix: str) -> np.ndarray:
+    if not image_path_suffix:
+        return None
+    
+    laravel_public_path = os.getenv('PUBLIC_PATH', '../public')
+    if laravel_public_path:
+        full_image_path = os.path.join(laravel_public_path, 'storage', image_path_suffix)
+        return compute_image_embedding(full_image_path)
+    return None
+
+def create_features_from_embeddings(
+    q1_title, q1_question, q1_text_emb, q1_img_emb,
+    q2_title, q2_question, q2_text_emb, q2_img_emb
+):
+    t1_clean = multilingual_preprocess(q1_title)
+    q1_clean = multilingual_preprocess(q1_question)
+    t2_clean = multilingual_preprocess(q2_title)
+    q2_clean = multilingual_preprocess(q2_question)
+    
+    features = {}
+    
+    features['len_char_q1'] = len(q1_question)
+    features['len_char_q2'] = len(q2_question)
+    features['len_word_q1'] = len(q1_question.split())
+    features['len_word_q2'] = len(q2_question.split())
+    features['len_diff_word'] = abs(features['len_word_q1'] - features['len_word_q2']) / max(features['len_word_q1'], features['len_word_q2'], 1)
+    
+    try:
+        fuzz_scores = [fuzz.QRatio(t1_clean, t2_clean)/100.0, fuzz.QRatio(q1_clean, q2_clean)/100.0]
+        features['fuzz_avg'] = np.mean(fuzz_scores)
+        features['fuzz_max'] = np.max(fuzz_scores)
+
+        cosine_sim = 0.0
+        if q1_text_emb is not None and q2_text_emb is not None:
+            norm1 = np.linalg.norm(q1_text_emb)
+            norm2 = np.linalg.norm(q2_text_emb)
+            if norm1 > 0 and norm2 > 0:
+                cosine_sim = np.dot(q1_text_emb, q2_text_emb) / (norm1 * norm2)
+        
+        features['cosine_max'] = cosine_sim
+        features['cosine_avg'] = cosine_sim
+        features['cosine_cross_max'] = cosine_sim
+        
+        t1_tokens, q1_tokens = t1_clean.split(), q1_clean.split()
+        t2_tokens, q2_tokens = t2_clean.split(), q2_clean.split()
+        features['jaccard_title'] = jaccard_similarity(t1_tokens, t2_tokens)
+        features['jaccard_question'] = jaccard_similarity(q1_tokens, q2_tokens)
+        features['jaccard_cross_avg'] = jaccard_similarity(set(t1_tokens + q1_tokens), set(t2_tokens + q2_tokens))
+
+        features['image_similarity'] = 0.0
+        if q1_img_emb is not None and q2_img_emb is not None:
+            norm1 = np.linalg.norm(q1_img_emb)
+            norm2 = np.linalg.norm(q2_img_emb)
+            if norm1 > 0 and norm2 > 0:
+                features['image_similarity'] = np.dot(q1_img_emb, q2_img_emb) / (norm1 * norm2)
+                
+    except Exception as e:
+        print(f"ERROR creating features from embeddings: {e}")
+        keys_to_zero = [
+            'fuzz_avg', 'fuzz_max', 'cosine_avg', 'cosine_max', 'cosine_cross_max', 
+            'jaccard_title', 'jaccard_question', 'jaccard_cross_avg', 'image_similarity'
+        ]
+        for key in keys_to_zero:
+            features[key] = 0.0     
+    return features
+
+duplicate_bp = Blueprint('duplicate_detector', __name__, url_prefix='/ai')
+@duplicate_bp.route('/find_similar_by_tags', methods=['POST'])
+def find_similar_by_tags():
+    if duplicate_classifier_model is None:
+        return jsonify(success=False, message="Duplicate detection model is not ready."), 503
+
+    title = request.form.get('title', '')
+    question_text = request.form.get('question', '')
+    tag_ids_str = request.form.get('tag_ids', '')
+    image_file = request.files.get('image')
+
+    if not title or not tag_ids_str:
+        return jsonify(success=False, message="Title and tag_ids are required."), 400
+
+    q1_text_emb = compute_text_embedding(f"{title} {question_text}")
+    q1_img_emb = None
+    if image_file and image_file.filename != '':
+        q1_img_emb = compute_image_embedding(image_file.stream)
+        
+    tag_ids = [int(tid) for tid in tag_ids_str.split(',') if tid.isdigit()]
+    if not tag_ids:
+        return jsonify(success=True, duplicates=[])
+    try:
+        conn = conn_pool.get_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        format_strings = ','.join(['%s'] * len(tag_ids))
+        query = f"""
+            SELECT q.id, q.title, q.question, qe.text_embedding, qe.image_embedding
+            FROM questions q
+            JOIN subject_questions sq ON q.id = sq.question_id
+            JOIN question_embeddings qe ON q.id = qe.question_id
+            WHERE sq.tag_id IN ({format_strings})
+            LIMIT 200; 
+        """
+        cur.execute(query, tuple(tag_ids))
+        candidates = cur.fetchall()
+        cur.close()
+        conn.close()
+
+    except Exception as e:
+        print(f"DB error in find_similar_by_tags: {e}")
+        return jsonify(success=False, message="Could not retrieve candidates."), 500
+
+    if not candidates:
+        return jsonify(success=True, message="No similar questions found for these tags.", duplicates=[])
+
+    potential_duplicates = []
+    for candidate in candidates:
+        q2_text_emb = np.frombuffer(candidate['text_embedding'], dtype=np.float32)
+        q2_img_emb = np.frombuffer(candidate['image_embedding'], dtype=np.float32) if candidate['image_embedding'] else None
+
+        features_dict = create_features_from_embeddings(
+            title, question_text, q1_text_emb, q1_img_emb,
+            candidate.get('title', ''), candidate.get('question', ''), q2_text_emb, q2_img_emb
+        )
+        
+        expected_features_order = [
+            'len_char_q1', 'len_char_q2', 'len_word_q1', 'len_word_q2', 'len_diff_word',
+            'fuzz_avg', 'fuzz_max', 'cosine_avg', 'cosine_max', 'cosine_cross_max',
+            'jaccard_title', 'jaccard_question', 'jaccard_cross_avg',
+            'image_similarity'
+        ]
+        
+        feature_values = [features_dict.get(col, 0.0) for col in expected_features_order]
+        features_df = pd.DataFrame([feature_values], columns=expected_features_order)
+
+        probability = duplicate_classifier_model.predict_proba(features_df)[:, 1][0] 
+
+        if probability > 0.5:
+            potential_duplicates.append({
+                "id": candidate.get('id'),
+                "title": candidate.get('title', ''),
+                "duplication_probability": round(float(probability), 4)
+            })
+
+    potential_duplicates.sort(key=lambda x: x['duplication_probability'], reverse=True)
+    return jsonify(success=True, duplicates=potential_duplicates)
 
 if __name__ == '__main__':
-    app.register_blueprint(bp)
+    app.register_blueprint(tag_bp)
+    app.register_blueprint(face_bp)
+    app.register_blueprint(duplicate_bp)
     
     build_user_views_from_db()
     build_graph_from_db()
     build_leaderboard_from_db()
-    update_tag_prototypes() 
+    update_tag_model()
 
     threading.Thread(target=periodic_data_refresh, args=(2,), daemon=True).start()
     threading.Thread(target=monitor_recommendation_db, args=(2,), daemon=True).start()
     threading.Thread(target=monitor_leaderboard_db, args=(2,), daemon=True).start()
-    threading.Thread(target=monitor_prototypes_db, args=(300,), daemon=True).start()
+    threading.Thread(target=monitor_tag_model_db, args=(300,), daemon=True).start()
 
     app.run(debug=True, host='0.0.0.0', use_reloader=False)
