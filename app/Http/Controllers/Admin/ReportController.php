@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\ReportResource;
 use App\Models\Report;
-use App\Models\ReportReason;
 use App\Models\Question;
 use App\Models\Answer;
 use App\Models\Comment;
@@ -16,47 +15,6 @@ use Carbon\Carbon;
 
 class ReportController extends Controller
 {
-    public function getReasons()
-    {
-        try {
-            $reasons = ReportReason::select(['id', 'title', 'description'])->get();
-            return response()->json($reasons);
-        } catch (\Exception $e) {
-            // Log::error('Gagal mengambil alasan laporan: ' . $e->getMessage());
-            return response()->json(['success' => false, 'message' => 'Gagal mengambil data.'], 500);
-        }
-    }
-    public function store(Request $request)
-    {
-        $request->validate([
-            'reportable_id' => 'required|string',
-            'reportable_type' => 'required|string|in:question,answer,comment', 
-            'report_reason_id' => 'required|uuid|exists:report_reasons,id', 
-            'additional_notes' => 'nullable|string|max:1000',
-        ]);
-
-        $modelName = 'App\\Models\\' . ucfirst($request->input('reportable_type'));
-        if (!class_exists($modelName)) {
-            return response()->json(['success' => false, 'message' => 'Tipe konten tidak valid.'], 400);
-        }
-
-        $reportable = $modelName::findOrFail($request->input('reportable_id'));
-
-        if ($reportable->hasBeenReportedByUser(Auth::id())) {
-            return response()->json(['success' => false, 'message' => 'Anda sudah pernah melaporkan konten ini.'], 409);
-        }
-
-        $reportData = [
-            'report_reason_id' => $request->input('report_reason_id'),
-            'additional_notes' => $request->input('additional_notes'),
-            'preview' => substr($reportable->content ?? $reportable->title, 0, 150) . '...'
-        ];
-
-        $reportable->report(Auth::id(), $reportData);
-
-        return response()->json(['success' => true, 'message' => 'Laporan Anda telah dikirim.'], 201);
-    }
-
     public function index(Request $request)
     {
         try {

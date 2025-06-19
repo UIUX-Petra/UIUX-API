@@ -17,6 +17,10 @@ use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use App\Http\Controllers\GroupQuestionController;
 
+
+use App\Http\Resources\QuestionResource;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+
 class QuestionController extends BaseController
 {
     protected $userController, $tagsQuestionController;
@@ -111,43 +115,7 @@ class QuestionController extends BaseController
         return $this->success('Successfully retrieved data', $data);
     }
 
-    // public function getQuestionPaginatedHome(Request $request)
-    // {
-    //     $perPage = $request->input('per_page', 10);
-    //     $userEmail = $request->input('email');
-    //     // $filterTag = $request->input('filter_tag', null); // Tetap ada filter berdasarkan tag
-
-    //     $requestUser = null;
-    //     if ($userEmail) {
-    //         $requestUser = User::where('email', $userEmail)->first();
-    //     }
-
-    //     $query = $this->model->with($this->model->getDefaultRelations()) // Asumsi getDefaultRelations() ada
-    //         ->withCount([
-    //             'comment as comments_count',
-    //         ]);
-
-    //     $query->orderBy('created_at', 'desc'); // Default order by terbaru
-
-    //     if ($requestUser) {
-    //         $query->withExists([
-    //             'savedByUsers as is_saved_by_request_user' => function ($subQuery) use ($requestUser) {
-    //                 $subQuery->where('saved_questions.user_id', $requestUser->id);
-    //             }
-    //         ]);
-    //     }
-
-    //     $data = $query->paginate($perPage);
-
-    //     if ($data->isNotEmpty()) {
-    //         $data->getCollection()->transform(function ($item) {
-    //             $item->is_saved_by_request_user = (bool) ($item->is_saved_by_request_user ?? false);
-    //             return $item;
-    //         });
-    //     }
-
-    //     return $this->success('Successfully retrieved data', $data);
-    // }
+  
 
     public function store(Request $request)
     {
@@ -165,7 +133,7 @@ class QuestionController extends BaseController
             return $this->error($validator->errors()->first(), 422);
         }
 
-        
+
 
         DB::beginTransaction();
         try {
@@ -206,7 +174,6 @@ class QuestionController extends BaseController
             DB::commit();
 
             return $this->success('Question published successfully!', $question);
-
         } catch (\Throwable $e) {
             DB::rollBack();
             Log::error('API Store Question Failed: ' . $e->getMessage() . ' in ' . $e->getFile() . ' on line ' . $e->getLine());
@@ -246,7 +213,6 @@ class QuestionController extends BaseController
                     Storage::disk('public')->delete($oldImage);
                 }
                 $newImagePath = $request->file('image')->store('question_images', 'public');
-
             } elseif ($request->input('remove_existing_image') == '1' && $oldImage) {
                 if (Storage::disk('public')->exists($oldImage)) {
                     Storage::disk('public')->delete($oldImage);
@@ -281,59 +247,32 @@ class QuestionController extends BaseController
         return $this->success('Successfully retrieved data', $question);
     }
 
-    public function viewQuestion(Request $request, $id) //ini emang ga butuh login sih, tapi pas fetch comment, masih harus login
-    {
-        $question = $this->model::with(array_merge($this->model->relations(), ['comment.user', 'answer.user', 'answer.comment.user']))->findOrFail($id);
-        $userId = $this->userController->getUserId($request->email);
-        if (!$question) {
-            return $this->error('Question not found with the provided id.');
-        }
-        if (is_null($userId)) {
-            return $this->error('User not found with the provided email.');
-        }
-        $answers = $question->answer->map(function ($answer) {
-            return [
-                'id' => $answer->id,
-                'username' => $answer->user->username,
-                'email' => $answer->user->email,
-                'user_image' => $answer->user->image,
-                'image' => $answer->image,
-                'answer' => $answer->answer,
-                'vote' => $answer->vote,
-                'verified' => $answer->verified,
-                'timestamp' => $answer->created_at,
-                'comments' => $answer->comment->map(function ($comment) {
-                    return [
-                        'id' => $comment->id,
-                        'username' => $comment->user->username,
-                        'user_email' => $comment->user->email,
-                        'comment' => $comment->comment,
-                        'timestamp' => $comment->created_at
-                    ];
-                }),
-            ];
-        });
-        $comment = $question->comment->map(function ($comment) {
-            return [
-                'id' => $comment->id,
-                'username' => $comment->user->username,
-                'email' => $comment->user->email,
-                'comment' => $comment->comment,
-                'timestamp' => $comment->created_at,
-            ];
-        });
 
-        $question->timestamp = $question->created_at;
-        $question->setRelation('answer', $answers);
-        $question->setRelation('comment', $comment);
+    public function viewQuestion(Request $request, $id)
+    {
         try {
-            $question->view($userId);
-            return $this->success('Question viewed successfully.', $question);
+            $user = $request->user();
+
+            $question = $this->model::with([
+                'user',
+                'savedByUsers', 
+                'comment.user',
+                'answer.user',
+                'answer.comment.user'
+            ])->findOrFail($id);
+
+            if ($user) {
+                $question->view($user->id);
+                Log::info('Question view recorded.', ['question_id' => $id, 'user_id' => $user->id]);
+            }
+
+            return new QuestionResource($question);
+        } catch (ModelNotFoundException $e) {
+            return $this->error('Question not found with the provided id.', 404);
         } catch (\Exception $e) {
-            return $this->error($e->getMessage());
+            return $this->error('An unexpected server error occurred.', 500);
         }
     }
-
     public function upvoteQuestion(Request $request, $id)
     {
         $question = $this->model::findOrFail($id);

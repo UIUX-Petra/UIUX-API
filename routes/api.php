@@ -5,7 +5,7 @@ use App\Http\Controllers\Admin\AuthController as AdminAuthController;
 use App\Http\Controllers\Admin\UserController as AdminUserController;
 use App\Http\Controllers\Admin\AnnouncementController as AdminAnnouncementController;
 use App\Http\Controllers\Admin\DashboardController;
-use App\Http\Controllers\Admin\ReportController;
+use App\Http\Controllers\Admin\ReportController as AdminReportController;
 use App\Http\Controllers\Admin\RoleController;
 use App\Http\Controllers\Admin\StatisticsController;
 use App\Http\Controllers\Admin\SubjectController as AdminSubjectController;
@@ -19,13 +19,16 @@ use App\Http\Controllers\QuestionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\AnnouncementController;
+use App\Http\Controllers\ReportReasonController;
+use App\Http\Controllers\ReportController;
+
 use App\Models\Question;
 
 // Route::get('/', function () {
 //     return view('welcome');
 // });
 Route::post('/register', [AuthController::class, 'register']);
-Route::post('/manualLogin', [AuthController::class, 'manualLogin']);
+Route::post('/manualLogin', [AuthController::class, 'manualLogin'])->name('login');
 Route::post('/face-login', [AuthController::class, 'faceLogin']);
 Route::post('/auth/socialite', [AuthController::class, 'socialiteLogin']);
 
@@ -35,78 +38,84 @@ Route::post('/email/resend-pending-verification', [AuthController::class, 'resen
 Route::get('/email/verify/{user}/{hash}', [AuthController::class, 'verifyEmail'])->name('verification.verify');
 Route::post('/email/verification-notification', [AuthController::class, 'resendVerificationEmail'])->name('verification.send');
 
-Route::get('/userWithRecommendation', [UserController::class, 'getUserWithRecommendation']);
-Route::get('/user-questions/{userId}', [QuestionController::class, 'getUserQuestionsWithCount']);
-Route::apiResource('comments', CommentController::class);
-Route::apiResource('users', UserController::class);
+Route::middleware(['auth:sanctum'])->group(function () {
 
-// Route::middleware(['auth:sanctum'])->group(function () {
-Route::post('/face-register', [AuthController::class, 'registerFace']);
+    Route::get('/userWithRecommendation', [UserController::class, 'getUserWithRecommendation']);
+    Route::get('/user-questions/{userId}', [QuestionController::class, 'getUserQuestionsWithCount']);
+    Route::apiResource('comments', CommentController::class);
+    Route::apiResource('users', UserController::class);
 
-Route::post('/saveQuestion/{email}/{questionId}', [UserController::class, 'saveQuestion']);
-Route::post('/unsaveQuestion/{email}/{questionId}', [UserController::class, 'unsaveQuestion']);
-Route::get('/getSavedQuestions/{email}', [UserController::class, 'getSavedQuestions']);
-Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
-Route::apiResource('questions', QuestionController::class);
-Route::post('questions/{id}/updatePartial', [QuestionController::class, 'updatePartial']);
-Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
-Route::get('/questions-paginated-home', [QuestionController::class, 'getQuestionPaginatedHome']);
+    // Route::middleware(['auth:sanctum'])->group(function () {
+    Route::post('/face-register', [AuthController::class, 'registerFace']);
 
-Route::apiResource('answers', AnswerController::class);
-Route::post('answers/{id}/updatePartial', [AnswerController::class, 'updatePartial']);
+    Route::post('/saveQuestion/{email}/{questionId}', [UserController::class, 'saveQuestion']);
+    Route::post('/unsaveQuestion/{email}/{questionId}', [UserController::class, 'unsaveQuestion']);
+    Route::get('/getSavedQuestions/{email}', [UserController::class, 'getSavedQuestions']);
+    Route::get('/questions/{question_id}', [QuestionController::class, 'getQuestionByAnswerId']);
+    Route::apiResource('questions', QuestionController::class);
+    Route::post('questions/{id}/updatePartial', [QuestionController::class, 'updatePartial']);
+    Route::get('/questions-paginated', [QuestionController::class, 'getQuestionPaginated']);
+    Route::get('/questions-paginated-home', [QuestionController::class, 'getQuestionPaginatedHome']);
 
-Route::apiResource('tags', SubjectController::class);
-Route::get('/tagOnly', [SubjectController::class, 'tagOnly']);
-Route::get('/tags', [SubjectController::class, 'index']);
+    Route::apiResource('answers', AnswerController::class);
+    Route::post('answers/{id}/updatePartial', [AnswerController::class, 'updatePartial']);
 
-Route::apiResource('comments', CommentController::class);
+    Route::apiResource('tags', SubjectController::class);
+    Route::get('/tagOnly', [SubjectController::class, 'tagOnly']);
+    Route::get('/tags', [SubjectController::class, 'index']);
 
-Route::apiResource('users', UserController::class);
-Route::post('/users/{email}/follow', [UserController::class, 'follow']);
-Route::get('/users/{userId}/questions', [UserController::class, 'getUserQuestions']);
-Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
-Route::get('/userTags', [UserController::class, 'getUserTags']);
+    Route::apiResource('comments', CommentController::class);
 
-// getUserQuestionsWithCount 
-Route::post('/users/editProfileDULU', [UserController::class, 'editProfileUser']);
+    Route::apiResource('users', UserController::class);
+    Route::post('/users/{email}/follow', [UserController::class, 'follow']);
+    Route::get('/users/{userId}/questions', [UserController::class, 'getUserQuestions']);
+    Route::get('/users/get/{email}', [UserController::class, 'getByEmail']);
+    Route::get('/userTags', [UserController::class, 'getUserTags']);
 
-Route::post('questions/{id}/upvote', [QuestionController::class, 'upvoteQuestion']);
-Route::post('questions/{id}/downvote', [QuestionController::class, 'downvoteQuestion']);
-Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
-Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
+    // getUserQuestionsWithCount 
+    Route::post('/users/editProfileDULU', [UserController::class, 'editProfileUser']);
 
-Route::get('/answers-paginated', [AnswerController::class, 'getAnswersPaginated']);
+    Route::post('questions/{id}/upvote', [QuestionController::class, 'upvoteQuestion']);
+    Route::post('questions/{id}/downvote', [QuestionController::class, 'downvoteQuestion']);
+    Route::post('answers/{id}/upvote', [AnswerController::class, 'upvoteAnswer']);
+    Route::post('answers/{id}/downvote', [AnswerController::class, 'downvoteAnswer']);
 
-Route::post('/logout', [AuthController::class, 'logout']);
-// });
-Route::get('/search', [SearchController::class, 'search']);
+    Route::get('/answers-paginated', [AnswerController::class, 'getAnswersPaginated']);
 
-Route::apiResource('histories', HistoryController::class);
-Route::post('/history/clear/{email}', [HistoryController::class, 'clearHistory']);
-Route::get('/getDetailedSearchHistory', [HistoryController::class, 'getDetailedSearchHistory']);
+    Route::post('/logout', [AuthController::class, 'logout']);
+    // });
+    Route::get('/search', [SearchController::class, 'search']);
 
-Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
+    Route::apiResource('histories', HistoryController::class);
+    Route::post('/history/clear/{email}', [HistoryController::class, 'clearHistory']);
+    Route::get('/getDetailedSearchHistory', [HistoryController::class, 'getDetailedSearchHistory']);
 
-Route::get('/getLeaderboardByTag/{id}', [UserController::class, 'getLeaderboardByTag']);
-Route::get('/getMostViewed/{email}', [UserController::class, 'getMostViewed']);
+    Route::post('questions/{id}/view', [QuestionController::class, 'viewQuestion']);
 
-Route::get('/announcements/active', [AnnouncementController::class, 'getActiveAnnouncements'])->name('announcements.active');
+    Route::get('/getLeaderboardByTag/{id}', [UserController::class, 'getLeaderboardByTag']);
+    Route::get('/getMostViewed/{email}', [UserController::class, 'getMostViewed']);
 
-Route::get('/export-questions-json', function () {
-    $questions = Question::select('id', 'title', 'question')->get();
-    return response()->json($questions);
-});
-// ==========================
+    Route::get('/announcements/active', [AnnouncementController::class, 'getActiveAnnouncements'])->name('announcements.active');
+    Route::get('/report-reasons', [ReportReasonController::class, 'getReasons']);
+    Route::post('/reports', [ReportController::class, 'store'])->name('reports.store');
+
+    Route::get('/export-questions-json', function () {
+        $questions = Question::select('id', 'title', 'question')->get();
+        return response()->json($questions);
+    });
+
+    });
+    // ==========================
 // GRUP ROUTE UNTUK ADMIN API
 // ==========================
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('/auth/socialite', [AdminAuthController::class, 'socialiteLogin']);
-    Route::middleware(['auth:sanctum'])->group(function () {
-        Route::post('/reports/{report}/process', [\App\Http\Controllers\Admin\ReportController::class, 'processReport'])->name('reports.process');
-        Route::get('/reports', [ReportController::class, 'index']);
-        Route::get('/content-detail/{type}/{id}', [ReportController::class, 'getContentDetail'])->name('admin.content.detail');
-        Route::get('/report-reasons', [ReportController::class, 'getReasons']);
-        
+    Route::middleware(['auth:admin'])->group(function () {
+        Route::post('/reports/{report}/process', [AdminReportController::class, 'processReport'])->name('reports.process');
+        Route::get('/reports', [AdminReportController::class, 'index']);
+        Route::get('/content-detail/{type}/{id}', [AdminReportController::class, 'getContentDetail'])->name('admin.content.detail');
+        Route::get('/report-reasons', [ReportReasonController::class, 'getReasons']);
+
         Route::get('/users/basic-info', [AdminUserController::class, 'getBasicUserInfo'])->name('users.basic-info');
         Route::post('/users/{user}/block', [AdminUserController::class, 'blockUser'])->name('users.block');
         Route::post('/users/{user}/unblock', [AdminUserController::class, 'unblockUser'])->name('users.unblock');

@@ -227,75 +227,104 @@ class AuthController extends BaseController
 
     public function socialiteLogin(Request $request)
     {
-        if (!env('API_SECRET') || $request->input('secret') !== env('API_SECRET')) {
+        // Log::info('Socialite login process initiated.', [
+        //     'email' => $request->input('email'),
+        //     'ip_address' => $request->ip()
+        // ]);
+        if (!config('app.api_secret') || $request->input('secret') !== config('app.api_secret')) {
+            // if (!env('API_SECRET') || $request->input('secret') !== env('API_SECRET')) {
+            // Log::warning('Socialite login attempt with invalid API secret.', [
+            //     'ip_address' => $request->ip(),
+            //     'api_secret' => $request->input('secret'),
+            //     'api_secret_env' => config('app.api_secret')
+            // ]);
             return $this->error('Please Login From ' . env('APP_NAME') . ' Website!', HttpResponseCode::HTTP_UNAUTHORIZED);
         }
+
         $validator = Validator::make($request->all(), [
             'name' => 'required|string|max:255',
             'email' => 'required|string|email|max:255',
         ]);
 
         if ($validator->fails()) {
+            // Log::warning('Socialite login validation failed.', [
+            //     'errors' => $validator->errors()->all(),
+            //     'ip_address' => $request->ip()
+            // ]);
             return $this->error($validator->errors()->first(), HttpResponseCode::HTTP_UNPROCESSABLE_ENTITY);
         }
+
         $validated = $validator->validated();
         $email = $validated['email'];
         $googleName = $validated['name'];
 
-        $user = User::where('email', $email)->first();
+        try {
+            $user = User::where('email', $email)->first();
 
-        if ($user) {
-            if (is_null($user->email_verified_at)) {
-                $user->email_verified_at = now();
-            }
-            $user->save();
-        } else {
-            $pendingUser = PendingUser::where('email', $email)->first();
-            if ($pendingUser) {
-                $user = User::create([
-                    'username' => $pendingUser->username,
-                    'email' => $pendingUser->email,
-                    'password' => null,
-                    'email_verified_at' => now(),
-                    'reputation' => 0,
-                ]);
-                $pendingUser->delete();
+            if ($user) {
+                if (is_null($user->email_verified_at)) {
+                    $user->email_verified_at = now();
+                }
+                $user->save();
             } else {
-                $usernameToTry = Str::slug($googleName, '');
-                if (User::where('username', $usernameToTry)->exists()) {
-                    $emailPrefix = Str::before($email, '@');
-                    $usernameToTry = Str::slug($emailPrefix, '');
+
+                $pendingUser = PendingUser::where('email', 'like', $email)->first();
+                if ($pendingUser) {
+                    $user = User::create([
+                        'username' => $pendingUser->username,
+                        'email' => $pendingUser->email,
+                        'password' => null, // Tidak ada password untuk socialite login
+                        'email_verified_at' => now(),
+                        'reputation' => 0,
+                    ]);
+                    $pendingUser->delete();
+                } else {
+                    $usernameToTry = Str::slug($googleName, '');
                     if (User::where('username', $usernameToTry)->exists()) {
-                        $usernameToTry = Str::slug($emailPrefix . Str::random(4), '');
+
+                        // Jika gagal, coba dari prefix email
+                        $emailPrefix = Str::before($email, '@');
+                        $usernameToTry = Str::slug($emailPrefix, '');
+                        if (User::where('username', $usernameToTry)->exists()) {
+
+                            // Jika masih gagal, tambahkan string acak
+                            $randomSuffix = Str::random(4);
+                            $usernameToTry = Str::slug($emailPrefix . $randomSuffix, '');
+                        }
                     }
-                }
-                if (User::where('username', $usernameToTry)->exists()) {
-                    return $this->error("Could not create a unique username. Please try manual registration or contact support.", HttpResponseCode::HTTP_CONFLICT);
-                }
 
-                $user = User::create([
-                    'username' => $usernameToTry,
-                    'email' => $email,
-                    'password' => null,
-                    'email_verified_at' => now(),
-                    'reputation' => 0,
-                ]);
+                    // Pengecekan terakhir untuk memastikan username benar-benar unik
+                    if (User::where('username', $usernameToTry)->exists()) {
+                        return $this->error("Could not create a unique username. Please try manual registration or contact support.", HttpResponseCode::HTTP_CONFLICT);
+                    }
+
+                    $user = User::create([
+                        'username' => $usernameToTry,
+                        'email' => $email,
+                        'password' => null,
+                        'email_verified_at' => now(),
+                        'reputation' => 0,
+                    ]);
+                }
             }
+
+            $user->tokens()->delete();
+            $userToken = $user->createToken('user_token', ['user'])->plainTextToken;
+
+
+            return $this->success(
+                'Login successful!',
+                [
+                    'id' => $user->id,
+                    'name' => $user->username,
+                    'email' => $user->email,
+                    'token' => $userToken,
+                    'reputation' => $user->reputation
+                ]
+            );
+        } catch (\Exception $e) {
+            return $this->error('An unexpected server error occurred. Please try again later.', HttpResponseCode::HTTP_INTERNAL_SERVER_ERROR);
         }
-
-        $user->tokens()->delete();
-        $userToken = $user->createToken('user_token', ['user'])->plainTextToken;
-
-        return $this->success(
-            'Login successful!',
-            [
-                'id' => $user->id,
-                'name' => $user->username,
-                'email' => $user->email,
-                'token' => $userToken,
-                'reputation' => $user->reputation
-            ]
-        );
     }
 
 

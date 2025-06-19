@@ -53,7 +53,7 @@ return [
     */
 
     'url' => env('APP_URL', 'http://localhost'),
-
+    'api_secret' => env('API_SECRET'),
     /*
     |--------------------------------------------------------------------------
     | Application Timezone
