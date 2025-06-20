@@ -104,43 +104,53 @@ Route::middleware(['auth:sanctum'])->group(function () {
         return response()->json($questions);
     });
 
-    });
-    // ==========================
+});
+
+// ==========================
 // GRUP ROUTE UNTUK ADMIN API
 // ==========================
 Route::prefix('admin')->name('admin.')->group(function () {
     Route::post('/auth/socialite', [AdminAuthController::class, 'socialiteLogin']);
     Route::middleware(['auth:admin'])->group(function () {
-        Route::post('/reports/{report}/process', [AdminReportController::class, 'processReport'])->name('reports.process');
-        Route::get('/reports', [AdminReportController::class, 'index']);
-        Route::get('/content-detail/{type}/{id}', [AdminReportController::class, 'getContentDetail'])->name('admin.content.detail');
-        Route::get('/report-reasons', [ReportReasonController::class, 'getReasons']);
-
-        Route::get('/users/basic-info', [AdminUserController::class, 'getBasicUserInfo'])->name('users.basic-info');
-        Route::post('/users/{user}/block', [AdminUserController::class, 'blockUser'])->name('users.block');
-        Route::post('/users/{user}/unblock', [AdminUserController::class, 'unblockUser'])->name('users.unblock');
         Route::post('/logout', [AdminAuthController::class, 'logout']);
         Route::get('/me', [AdminAuthController::class, 'me']);
+        Route::middleware('role.admin:content-manager,super-admin')->group(function () {
+            Route::get('/content-detail/{type}/{id}', [AdminReportController::class, 'getContentDetail'])->name('admin.content.detail');
+            Route::apiResource('subjects', AdminSubjectController::class);
+        });
 
-        // announcements
-        Route::get('/announcements', [AdminAnnouncementController::class, 'index']);
-        Route::post('/announcements', [AdminAnnouncementController::class, 'store']);
-        Route::get('/announcements/{announcement}', [AdminAnnouncementController::class, 'showDetail']);
-        Route::put('/announcements/{announcement}', [AdminAnnouncementController::class, 'updateDetail']);
-        Route::delete('/announcements/{announcement}', [AdminAnnouncementController::class, 'destroyAnnouncement']);
+        Route::middleware('role.admin:moderator,super-admin')->group(function () {
+            Route::get('/announcements', [AdminAnnouncementController::class, 'index']);
+            Route::post('/announcements', [AdminAnnouncementController::class, 'store']);
+            Route::get('/announcements/{announcement}', [AdminAnnouncementController::class, 'showDetail']);
+            Route::put('/announcements/{announcement}', [AdminAnnouncementController::class, 'updateDetail']);
+            Route::delete('/announcements/{announcement}', [AdminAnnouncementController::class, 'destroyAnnouncement']);
+        });
 
-        Route::apiResource('subjects', AdminSubjectController::class);
+        Route::middleware('role.admin:user-manager,super-admin')->group(function () {
+            Route::get('/users/basic-info', [AdminUserController::class, 'getBasicUserInfo'])->name('users.basic-info');
+            Route::post('/users/{user}/block', [AdminUserController::class, 'blockUser'])->name('users.block');
+            Route::post('/users/{user}/unblock', [AdminUserController::class, 'unblockUser'])->name('users.unblock');
+            Route::get('/users', [AdminUserController::class, 'getBasicUserInfo'])->name('api.admin.users.index');
+            Route::get('/users/{user}/activity', [AdminUserController::class, 'getActivitySummary']);
+        });
 
-        Route::apiResource('roles', RoleController::class);
-        Route::get('roles/{role}/admins', [RoleController::class, 'getAssignedAdmins'])->name('roles.admins');
-        Route::post('roles/{role}/sync-admins', [RoleController::class, 'syncAdmins'])->name('roles.sync-admins');
+        Route::middleware('role.admin:community-manager,super-admin')->group(function () {
+            Route::get('/report-reasons', [ReportReasonController::class, 'getReasons']);
+            Route::post('/reports/{report}/process', [AdminReportController::class, 'processReport'])->name('reports.process');
+            Route::get('/reports', [AdminReportController::class, 'index']);
+        });
 
-        Route::get('admins', [AdminController::class, 'index'])->name('admins.index');
+        Route::middleware('role.admin:analyst,super-admin')->group(function () {
+            Route::get('dashboard/statistics', [StatisticsController::class, 'getBasicStats'])->name('dashboard.statistics');
+            Route::get('dashboard/report-stats', [DashboardController::class, 'getReportStats'])->name('dashboard.reports');
+        });
 
-        Route::get('dashboard/report-stats', [DashboardController::class, 'getReportStats'])->name('dashboard.reports');
-        Route::get('dashboard/statistics', [StatisticsController::class, 'getBasicStats'])->name('dashboard.statistics');
-
-        Route::get('/users', [AdminUserController::class, 'getBasicUserInfo'])->name('api.admin.users.index');
-        Route::get('/users/{user}/activity', [AdminUserController::class, 'getActivitySummary']);
+        Route::middleware('role.admin:super-admin')->group(function () {
+            Route::apiResource('roles', RoleController::class);
+            Route::get('roles/{role}/admins', [RoleController::class, 'getAssignedAdmins'])->name('roles.admins');
+            Route::post('roles/{role}/sync-admins', [RoleController::class, 'syncAdmins'])->name('roles.sync-admins');
+            Route::get('admins', [AdminController::class, 'index'])->name('admins.index');
+        });
     });
 });

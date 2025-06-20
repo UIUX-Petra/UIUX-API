@@ -38,7 +38,7 @@ class AuthController extends BaseController
         $validated = $validator->validated();
         $email = $validated['email'];
 
-        $admin = Admin::where('email', $email)->first();
+        $admin = Admin::with('roles')->where('email', $email)->first();
 
         if (!$admin) {
             Log::warning('Percobaan login gagal: Email tidak terdaftar sebagai admin.', ['email' => $email]);
@@ -49,13 +49,17 @@ class AuthController extends BaseController
         }
 
         Log::info('Admin ditemukan.', ['id' => $admin->id, 'email' => $admin->email]);
-
-
-        $admin->save();
         Log::info('Email admin telah diverifikasi.', ['id' => $admin->id]);
         $admin->tokens()->delete();
 
-        $abilities = ['role:admin']; 
+        $abilities = $admin->roles->pluck('slug')->all();
+        if (empty($abilities)) {
+            Log::warning('Admin login denied: No roles assigned.', ['id' => $admin->id]);
+            return $this->error(
+                'Your admin account does not have any roles assigned. Please contact support.',
+                HttpResponseCode::HTTP_FORBIDDEN
+            );
+        }
 
         $adminToken = $admin->createToken('Admin_token', $abilities)->plainTextToken;
         Log::info('Token baru berhasil dibuat untuk admin.', ['id' => $admin->id]);
@@ -65,6 +69,7 @@ class AuthController extends BaseController
             'name' => $admin->name,
             'email' => $admin->email,
             'token' => $adminToken,
+            'roles' => $abilities,
         ];
 
         return $this->success(

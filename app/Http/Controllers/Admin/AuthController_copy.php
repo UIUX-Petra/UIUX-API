@@ -10,7 +10,7 @@ use Illuminate\Validation\ValidationException;
 use App\Utils\HttpResponseCode;
 
 
-class AuthController extends BaseController
+class AuthController_Copy extends BaseController
 {
     public function login(Request $request)
     {
