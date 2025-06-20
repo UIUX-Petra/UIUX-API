@@ -155,6 +155,20 @@ class QuestionController extends BaseController
     {
         $aiServiceUrl = env('AI_SERVICE_URL', 'http://localhost:5000/ai');
         $feedbackRequest = Http::async()->asMultipart();
+
+        $payload = [
+            [ 'name'     => 'title', 'contents' => $question->title, ],
+            [ 'name'     => 'question', 'contents' => $question->question, ],
+        ];
+
+        foreach ($request->input('selected_tags', []) as $tag) {
+            $payload[] = [ 'name'     => 'selected_tags[]', 'contents' => $tag, ];
+        }
+
+        foreach ($request->input('recommended_tags', []) as $tag) {
+            $payload[] = [ 'name'     => 'recommended_tags[]', 'contents' => $tag,];
+        }
+
         if ($request->hasFile('image')) {
             $imageFile = $request->file('image');
             $feedbackRequest->attach(
@@ -163,13 +177,7 @@ class QuestionController extends BaseController
                 $imageFile->getClientOriginalName()
             );
         }
-
-        $feedbackRequest->post("$aiServiceUrl/tag_feedback", [
-            'title' => $question->title,
-            'question' => $question->question,
-            'selected_tags' => $request->input('selected_tags', []),
-            'recommended_tags' => $request->input('recommended_tags', []),
-        ]);
+        $feedbackRequest->post("$aiServiceUrl/tag_feedback", $payload);
 
         Http::async()->post("$aiServiceUrl/process_embeddings", [
             'question_id' => $question->id
