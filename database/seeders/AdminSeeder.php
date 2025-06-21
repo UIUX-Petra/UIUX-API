@@ -25,14 +25,34 @@ class AdminSeeder extends Seeder
 
         $this->command->info('Creating default admin accounts...');
 
-        $superAdmin = Admin::firstOrCreate(
-            ['email' => 'c14230250@john.petra.ac.id'],
+        $superAdmins = [
             [
-                'name' => 'Jessica Chandra',
-                'password' => Hash::make('password'),
+                [
+                    'email' => 'c14230250@john.petra.ac.id',
+                ],
+                [
+                    'name' => 'Jessica Chandra',
+                    'password' => Hash::make('password'),
+                ]
+            ],
+            [
+                [
+                    'email' => 'c14230074@john.petra.ac.id',
+                ],
+                [
+                    'name' => 'Terry Clement',
+                    'password' => Hash::make('password'),
+                ]
             ]
-        );
-        $superAdmin->roles()->syncWithoutDetaching([$superAdminRole->id]);
+        ];
+
+        foreach ($superAdmins as $superAdmin) {
+            $super = Admin::firstOrCreate(
+                $superAdmin[0],
+                $superAdmin[1]
+            );
+            $super->roles()->syncWithoutDetaching([$superAdminRole->id]);
+        }
 
         $moderatorAdmin = Admin::firstOrCreate(
             ['email' => 'moderator@example.com'],

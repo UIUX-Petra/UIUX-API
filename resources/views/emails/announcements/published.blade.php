@@ -1,9 +1,10 @@
-    <x-mail::message>
-    # {{ $title }}
+<x-mail::message>
 
-    {!! nl2br(e($detail)) !!}
+# {{ $title }}
 
-    Terima kasih,<br>
-    {{ config('app.name') }}
-    </x-mail::message>
-    
+{!! nl2br(e($detail)) !!}
+
+Terima kasih,<br>
+{{ config('app.name') }}
+
+</x-mail::message>

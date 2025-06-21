@@ -12,25 +12,24 @@ use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\Mail;
 
-    class SendAnnouncementEmail implements ShouldQueue
+class SendAnnouncementEmail implements ShouldQueue
+{
+    use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
+
+    public Announcement $announcement;
+    public function __construct(Announcement $announcement)
     {
-        use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
-
-        public function __construct(protected Announcement $announcement)
-        {
-        }
-
-        public function handle(): void
-        {
-            // Ambil semua pengguna aktif (asumsi ada kolom 'is_active' atau sejenisnya)
-            $activeUsers = User::where('is_active', true)->get();
-
-            foreach ($activeUsers as $user) {
-                Mail::to($user->email)->queue(new AnnouncementPublished($this->announcement));
-            }
-
-            // Tandai kapan notifikasi selesai dikirim
-            $this->announcement->update(['notified_at' => now()]);
-        }
+        $this->announcement = $announcement;
     }
-    
+
+    public function handle(): void
+    {
+        $users = User::all();
+
+        foreach ($users as $user) {
+            Mail::to($user->email)->queue(new AnnouncementPublished($this->announcement));
+        }
+
+        $this->announcement->update(['notified_at' => now()]);
+    }
+}

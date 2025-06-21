@@ -14,8 +14,10 @@ use Illuminate\Queue\SerializesModels;
     {
         use Queueable, SerializesModels;
 
-        public function __construct(public Announcement $announcement)
+        public Announcement $announcement;
+        public function __construct(Announcement $announcement)
         {
+            $this->announcement = $announcement;
         }
 
         public function envelope(): Envelope
