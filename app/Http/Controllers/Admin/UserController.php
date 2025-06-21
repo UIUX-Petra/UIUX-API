@@ -9,6 +9,7 @@ use App\Models\Report;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Validator;
 
 
 class UserController extends BaseController
@@ -67,7 +68,7 @@ class UserController extends BaseController
         return $this->success('User activity summary retrieved successfully', $data);
     }
 
-    
+
     public function getBasicUserInfo()
     {
         $users = $this->model
@@ -77,47 +78,59 @@ class UserController extends BaseController
             ->paginate(10);
 
         $users->getCollection()->transform(function ($user) {
-            $user->status = $user->active_block_exists ? 'Blocked' : 'Active';
+            $user->status = $user->activeBlock ? 'Blocked' : 'Active';
             $user->registered_at = $user->created_at->format('M d, Y');
-            unset($user->active_block_exists, $user->created_at);
+            unset($user->activeBlock, $user->created_at);
 
             return $user;
         });
 
         return $this->success('Successfully retrieved user data', $users);
     }
-    public function blockUser(User $user)
+    public function blockUser(User $user, Request $request)
     {
-        Log::info('Block user request received');
         $adminId = Auth::id();
-        Log::info('Block user request received.', [
-            'admin_id' => $adminId,
-            'user_to_block_id' => $user->id,
-            'user_to_block_email' => $user->email,
+
+        $validator = Validator::make($request->all(), [
+            'end_time' => ['nullable', 'date', 'after:today'],
         ]);
 
-        // Validasi: Cek apakah user sudah diblokir aktif
+        if ($validator->fails()) {
+            return $this->error(
+                'Invalid unblock date: ' . $validator->errors()->first('end_time'),
+                422
+            );
+        }
+
+        $endTime = $request->input('end_time');
+
         $isAlreadyBlocked = Block::where('blocked_user_id', $user->id)
             ->whereNull('unblocker_id')
+            ->where(function ($q) {
+                $q->whereNull('end_time')
+                    ->orWhere('end_time', '>', now());
+            })
             ->exists();
 
         if ($isAlreadyBlocked) {
-            Log::warning('Block action failed: User is already blocked.', [
+            Log::warning('Block action failed: already blocked.', [
                 'admin_id' => $adminId,
-                'user_id' => $user->id
+                'user_id' => $user->id,
             ]);
-            return $this->error('This user is already blocked.', 409); // 409 Conflict
+            return $this->error('This user is already blocked.', 409);
         }
 
-        // Buat record blokir baru
-        Block::create([
+        $block = Block::create([
             'blocked_user_id' => $user->id,
             'blocker_id' => $adminId,
+            'end_time' => $endTime,
         ]);
 
         Log::info('User successfully blocked.', [
             'admin_id' => $adminId,
-            'blocked_user_id' => $user->id
+            'blocked_user_id' => $user->id,
+            'block_id' => $block->id,
+            'end_time' => $endTime,
         ]);
 
         return $this->success('User has been successfully blocked.');
