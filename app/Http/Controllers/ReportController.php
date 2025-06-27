@@ -22,14 +22,14 @@ class ReportController extends Controller
 
             $modelName = 'App\\Models\\' . ucfirst($validated['reportable_type']);
             if (!class_exists($modelName)) {
-                return response()->json(['success' => false, 'message' => 'Tipe konten tidak valid.'], 400);
+                return response()->json(['success' => false, 'message' => 'Content type is invalid.'], 400);
             }
 
             $reportable = $modelName::findOrFail($validated['reportable_id']);
 
             
             if ($reportable->hasBeenReportedByUser(Auth::id())) {
-                return response()->json(['success' => false, 'message' => 'Anda sudah pernah melaporkan konten ini.'], 409);
+                return response()->json(['success' => false, 'message' => 'You have already reported this content'], 409);
             }
 
             // Kode BARU dengan perbaikan
