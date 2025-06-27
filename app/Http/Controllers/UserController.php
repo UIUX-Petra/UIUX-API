@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Subject;
 use App\Models\User;
 use App\Models\Question;
 use App\Utils\HttpResponseCode;
@@ -65,9 +66,9 @@ class UserController extends BaseController
                 [
                     'histories.searched' => function ($morphTo) {
                         $morphTo->morphWith([
-                            \App\Models\Question::class => ['user:id,username'],
-                            \App\Models\User::class => [],
-                            \App\Models\Subject::class => [],
+                            Question::class => ['user:id,username'],
+                            User::class => [],
+                            Subject::class => [],
                         ]);
                     }
                 ]
