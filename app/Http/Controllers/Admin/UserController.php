@@ -73,7 +73,6 @@ class UserController extends BaseController
         $admin = Auth::user();
         $question = null;
 
-        // 1. Log awal request
         Log::info("Admin [ID: {$admin->id}, Email: {$admin->email}] requested content detail.", [
             'type' => $type,
             'id' => $id,
@@ -83,7 +82,6 @@ class UserController extends BaseController
         try {
             switch ($type) {
                 case 'question':
-                    // 2. Log setiap kasus
                     Log::info("Type 'question'. Finding Question ID: {$id}.");
                     $question = Question::find($id);
                     break;
@@ -123,7 +121,6 @@ class UserController extends BaseController
                     return $this->error('Invalid content type specified.', 400); // Bad Request
             }
 
-            // 3. Log Peringatan jika tidak ditemukan
             if (!$question) {
                 Log::warning("Could not resolve a parent question for type '{$type}' with ID {$id}. Content not found.", [
                     'admin_id' => $admin->id
@@ -131,13 +128,11 @@ class UserController extends BaseController
                 return $this->error('Content not found.', 404);
             }
 
-            // 4. Log Sukses sebelum mengirim response
             Log::info("Successfully found parent Question ID: {$question->id}. Loading relationships and returning success response.", [
                 'admin_id' => $admin->id,
                 'final_question_id' => $question->id
             ]);
 
-            // Load semua relasi yang dibutuhkan untuk ditampilkan di modal
             $question->load([
                 'user:id,username,email,image',
                 'comment',
@@ -158,14 +153,13 @@ class UserController extends BaseController
 
             return $this->success('Content detail retrieved successfully.', $question);
         } catch (\Exception $e) {
-            // 5. Log Error Kritis jika terjadi exception
-            Log::error("Critical failure in getContentDetail for type:{$type}, id:{$id}", [
-                'admin_id' => $admin->id,
-                'error_message' => $e->getMessage(),
-                'file' => $e->getFile(),
-                'line' => $e->getLine(),
-                'trace' => $e->getTraceAsString() // Sangat berguna untuk debugging mendalam
-            ]);
+            // Log::error("Critical failure in getContentDetail for type:{$type}, id:{$id}", [
+            //     'admin_id' => $admin->id,
+            //     'error_message' => $e->getMessage(),
+            //     'file' => $e->getFile(),
+            //     'line' => $e->getLine(),
+            //     'trace' => $e->getTraceAsString() 
+            // ]);
             return $this->error('An error occurred while fetching content details.', 500);
         }
     }
