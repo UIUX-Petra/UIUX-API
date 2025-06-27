@@ -11,7 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\BaseController;
 use App\Http\Controllers\UserController;
-use Validator;
+use Illuminate\Support\Facades\Validator;
 
 class CommentController extends BaseController
 {
