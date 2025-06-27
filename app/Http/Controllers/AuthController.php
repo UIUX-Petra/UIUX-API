@@ -261,14 +261,6 @@ class AuthController extends BaseController
 
         try {
             $user = User::with('activeBlock')->where('email', $email)->first();
-            if ($user->activeBlock) {
-                $suspension = $user->activeBlock->end_time
-                    ? 'until ' . Carbon::parse($user->activeBlock->end_time)->format('F j, Y \a\t g:i A')
-                    : 'permanently';
-
-                return $this->error("Your account has been suspended {$suspension}.");
-            }
-
             if ($user) {
                 if (is_null($user->email_verified_at)) {
                     $user->email_verified_at = now();
@@ -281,7 +273,7 @@ class AuthController extends BaseController
                     $user = User::create([
                         'username' => $pendingUser->username,
                         'email' => $pendingUser->email,
-                        'password' => null, // Tidak ada password untuk socialite login
+                        'password' => null,
                         'email_verified_at' => now(),
                         'reputation' => 0,
                     ]);
@@ -314,6 +306,13 @@ class AuthController extends BaseController
                         'reputation' => 0,
                     ]);
                 }
+            }
+            if ($user->activeBlock) {
+                $suspension = $user->activeBlock->end_time
+                    ? 'until ' . Carbon::parse($user->activeBlock->end_time)->format('F j, Y \a\t g:i A')
+                    : 'permanently';
+
+                return $this->error("Your account has been suspended {$suspension}.");
             }
 
             $user->tokens()->delete();
