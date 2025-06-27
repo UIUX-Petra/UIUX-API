@@ -6,6 +6,7 @@ use App\Mail\VerifyPendingRegistrationMail;
 use App\Models\PendingUser;
 use App\Models\User;
 use App\Utils\HttpResponseCode;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
@@ -259,7 +260,14 @@ class AuthController extends BaseController
         $googleName = $validated['name'];
 
         try {
-            $user = User::where('email', $email)->first();
+            $user = User::with('activeBlock')->where('email', $email)->first();
+            if ($user->activeBlock) {
+                $suspension = $user->activeBlock->end_time
+                    ? 'until ' . Carbon::parse($user->activeBlock->end_time)->format('F j, Y \a\t g:i A')
+                    : 'permanently';
+
+                return $this->error("Your account has been suspended {$suspension}.");
+            }
 
             if ($user) {
                 if (is_null($user->email_verified_at)) {
