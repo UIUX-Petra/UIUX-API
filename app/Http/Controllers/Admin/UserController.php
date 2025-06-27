@@ -35,7 +35,7 @@ class UserController extends BaseController
             'reputation' => $user->reputation,
             'total_questions' => $user->question_count,
             'total_answers' => $user->answer_count,
-            'total_comments' => $user->comment_count, 
+            'total_comments' => $user->comment_count,
             'total_reports_against_user' => $reportedQuestionsCount + $reportedAnswersCount + $reportedCommentsCount,
         ];
 
@@ -79,7 +79,16 @@ class UserController extends BaseController
         $query->when($request->query('status') === 'blocked', function ($q) {
             return $q->whereHas('activeBlock');
         });
-        
+
+        $query->when($request->filled('search'), function ($q) use ($request) {
+            $searchTerm = $request->query('search');
+            return $q->where(function ($subQuery) use ($searchTerm) {
+                $subQuery->where('id', '=', $searchTerm) 
+                    ->orWhere('username', 'LIKE', "%{$searchTerm}%") 
+                    ->orWhere('email', 'LIKE', "%{$searchTerm}%"); 
+            });
+        });
+
 
         $users = $query->latest()->paginate(10);
 
