@@ -113,6 +113,9 @@ Route::prefix('admin')->name('admin.')->group(function () {
     Route::middleware(['auth:admin'])->group(function () {
         Route::post('/logout', [AdminAuthController::class, 'logout']);
         Route::get('/me', [AdminAuthController::class, 'me']);
+        Route::get('dashboard/statistics', [StatisticsController::class, 'getBasicStats'])->name('dashboard.statistics');
+        Route::get('dashboard/report-stats', [DashboardController::class, 'getReportStats'])->name('dashboard.reports');
+
         Route::middleware('role.admin:content-manager,super-admin')->group(function () {
             Route::get('/content-detail/{type}/{id}', [AdminReportController::class, 'getContentDetail'])->name('admin.content.detail');
             Route::apiResource('subjects', AdminSubjectController::class);
@@ -139,11 +142,6 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::get('/report-reasons', [ReportReasonController::class, 'getReasons']);
             Route::post('/reports/{report}/process', [AdminReportController::class, 'processReport'])->name('reports.process');
             Route::get('/reports', [AdminReportController::class, 'index']);
-        });
-
-        Route::middleware('role.admin:analyst,super-admin')->group(function () {
-            Route::get('dashboard/statistics', [StatisticsController::class, 'getBasicStats'])->name('dashboard.statistics');
-            Route::get('dashboard/report-stats', [DashboardController::class, 'getReportStats'])->name('dashboard.reports');
         });
 
         Route::middleware('role.admin:super-admin')->group(function () {
