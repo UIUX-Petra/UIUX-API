@@ -64,7 +64,7 @@ Route::middleware(['auth:sanctum'])->group(function () {
     Route::get('/tagOnly', [SubjectController::class, 'tagOnly']);
     Route::get('/tags', [SubjectController::class, 'index']);
 
-    Route::apiResource('comments', CommentController::class);
+    // Route::apiResource('comments', CommentController::class);
 
     Route::apiResource('users', UserController::class);
     Route::post('/users/{email}/follow', [UserController::class, 'follow']);
@@ -103,7 +103,6 @@ Route::middleware(['auth:sanctum'])->group(function () {
         $questions = Question::select('id', 'title', 'question')->get();
         return response()->json($questions);
     });
-
 });
 
 // ==========================
@@ -133,6 +132,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/users/{user}/unblock', [AdminUserController::class, 'unblockUser'])->name('users.unblock');
             Route::get('/users', [AdminUserController::class, 'getBasicUserInfo'])->name('api.admin.users.index');
             Route::get('/users/{user}/activity', [AdminUserController::class, 'getActivitySummary']);
+            Route::get('/content-detail/{type}/{id}', [AdminUserController::class, 'getContentDetail'])->name('content.detail');
         });
 
         Route::middleware('role.admin:community-manager,super-admin')->group(function () {

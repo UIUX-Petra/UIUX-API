@@ -4,6 +4,9 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\BaseController;
 use App\Models\User;
+use App\Models\Answer;
+use App\Models\Comment;
+use App\Models\Question;
 use App\Models\Block;
 use App\Models\Report;
 use Illuminate\Http\Request;
@@ -65,6 +68,103 @@ class UserController extends BaseController
         return $this->success('User activity summary retrieved successfully', $data);
     }
 
+    public function getContentDetail(Request $request, $type, $id) // <-- Tambahkan Request $request
+    {
+        $admin = Auth::user();
+        $question = null;
+
+        Log::info("Admin [ID: {$admin->id}, Email: {$admin->email}] requested content detail.", [
+            'type' => $type,
+            'id' => $id,
+            'ip_address' => $request->ip()
+        ]);
+
+        try {
+            switch ($type) {
+                case 'question':
+                    Log::info("Type 'question'. Finding Question ID: {$id}.");
+                    $question = Question::find($id);
+                    break;
+
+                case 'answer':
+                    Log::info("Type 'answer'. Finding Answer ID: {$id} to get its parent question.");
+                    $answer = Answer::find($id);
+                    if ($answer) {
+                        $question = $answer->question;
+                        Log::info("Answer ID {$id} found. Parent Question ID is: {$question->id}.");
+                    } else {
+                        Log::warning("Answer with ID: {$id} not found.");
+                    }
+                    break;
+
+                case 'comment':
+                    Log::info("Type 'comment'. Finding Comment ID: {$id} to trace back to parent question.");
+                    $comment = Comment::find($id);
+                    if ($comment) {
+                        $commentable = $comment->commentable;
+                        if ($commentable instanceof Question) {
+                            $question = $commentable;
+                            Log::info("Comment ID {$id} is attached to Question ID: {$question->id}.");
+                        } elseif ($commentable instanceof Answer) {
+                            $question = $commentable->question;
+                            Log::info("Comment ID {$id} is attached to Answer ID: {$commentable->id}. Parent Question ID is: {$question->id}.");
+                        } else {
+                            Log::warning("Comment ID {$id} has an unknown commentable type.");
+                        }
+                    } else {
+                        Log::warning("Comment with ID: {$id} not found.");
+                    }
+                    break;
+
+                default:
+                    Log::warning("Invalid type '{$type}' provided for content detail request.", ['admin_id' => $admin->id]);
+                    return $this->error('Invalid content type specified.', 400); // Bad Request
+            }
+
+            if (!$question) {
+                Log::warning("Could not resolve a parent question for type '{$type}' with ID {$id}. Content not found.", [
+                    'admin_id' => $admin->id
+                ]);
+                return $this->error('Content not found.', 404);
+            }
+
+            Log::info("Successfully found parent Question ID: {$question->id}. Loading relationships and returning success response.", [
+                'admin_id' => $admin->id,
+                'final_question_id' => $question->id
+            ]);
+
+            $question->load([
+                'user:id,username,email,image',
+                'comment',
+                'comment.user:id,username,email,image',
+                'answer' => function ($query) {
+                    $query->orderBy('verified', 'desc')->orderBy('vote', 'desc');
+                },
+                'answer.user:id,username,email,image',
+                'answer.comment',
+                'answer.comment.user:id,username,email,image',
+                'comment.user:id,username,email,image'
+            ]);
+            Log::info("Final data prepared to be sent. Checking for comments.", [
+                'admin_id' => Auth::id(),
+                'question_data_with_relations' => $question->toArray()
+            ]);
+
+
+            return $this->success('Content detail retrieved successfully.', $question);
+        } catch (\Exception $e) {
+            // Log::error("Critical failure in getContentDetail for type:{$type}, id:{$id}", [
+            //     'admin_id' => $admin->id,
+            //     'error_message' => $e->getMessage(),
+            //     'file' => $e->getFile(),
+            //     'line' => $e->getLine(),
+            //     'trace' => $e->getTraceAsString() 
+            // ]);
+            return $this->error('An error occurred while fetching content details.', 500);
+        }
+    }
+
+
 
     public function getBasicUserInfo(Request $request)
     {
@@ -83,9 +183,9 @@ class UserController extends BaseController
         $query->when($request->filled('search'), function ($q) use ($request) {
             $searchTerm = $request->query('search');
             return $q->where(function ($subQuery) use ($searchTerm) {
-                $subQuery->where('id', '=', $searchTerm) 
-                    ->orWhere('username', 'LIKE', "%{$searchTerm}%") 
-                    ->orWhere('email', 'LIKE', "%{$searchTerm}%"); 
+                $subQuery->where('id', '=', $searchTerm)
+                    ->orWhere('username', 'LIKE', "%{$searchTerm}%")
+                    ->orWhere('email', 'LIKE', "%{$searchTerm}%");
             });
         });
 

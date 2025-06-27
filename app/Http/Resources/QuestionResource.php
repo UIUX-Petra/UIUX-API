@@ -17,7 +17,10 @@ class QuestionResource extends JsonResource
             'image' => $this->image,
             'vote' => $this->vote,
             'view' => $this->view,
+            'user_id' => $this->user_id,
             'timestamp' => $this->created_at,
+            'group_question' => $this->groupQuestion,
+            
             
             'is_saved_by_request_user' => $this->when(Auth::check(), function () {
                 return $this->savedByUsers()->where('user_id', Auth::id())->exists();
