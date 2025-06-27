@@ -21,14 +21,12 @@ class UserController extends BaseController
 
     public function getActivitySummary(User $user)
     {
-        // FIX #1: Menggunakan nama relasi 'comment' secara konsisten.
         $user->loadCount(['question', 'answer', 'comment']);
 
         $questionIds = $user->question()->pluck('id');
         $answerIds = $user->answer()->pluck('id');
         $commentIds = $user->comment()->pluck('id');
 
-        // FIX #2: Menggunakan ::class untuk 'reportable_type' agar lebih aman.
         $reportedQuestionsCount = Report::where('reportable_type', 'question')->whereIn('reportable_id', $questionIds)->count();
         $reportedAnswersCount = Report::where('reportable_type', 'answer')->whereIn('reportable_id', $answerIds)->count();
         $reportedCommentsCount = Report::where('reportable_type', 'comment')->whereIn('reportable_id', $commentIds)->count();
@@ -37,7 +35,7 @@ class UserController extends BaseController
             'reputation' => $user->reputation,
             'total_questions' => $user->question_count,
             'total_answers' => $user->answer_count,
-            'total_comments' => $user->comment_count, // FIX #3: Menggunakan 'comment_count'
+            'total_comments' => $user->comment_count, 
             'total_reports_against_user' => $reportedQuestionsCount + $reportedAnswersCount + $reportedCommentsCount,
         ];
 
@@ -51,7 +49,6 @@ class UserController extends BaseController
                 ->latest()
                 ->take(5)
                 ->get(['id', 'answer', 'question_id', 'created_at']),
-            // FIX #4: Memuat relasi polimorfik dengan lebih aman.
             'comments' => $user->comment()
                 ->with('commentable')
                 ->latest()
@@ -69,16 +66,32 @@ class UserController extends BaseController
     }
 
 
-    public function getBasicUserInfo()
+    public function getBasicUserInfo(Request $request)
     {
-        $users = $this->model
-            ->withExists('activeBlock')
-            ->select('id', 'username', 'image', 'email', 'created_at')
-            ->latest()
-            ->paginate(10);
+        $query = $this->model
+            ->with('activeBlock')
+            ->select('id', 'username', 'image', 'email', 'created_at');
+
+        $query->when($request->query('status') === 'active', function ($q) {
+            return $q->whereDoesntHave('activeBlock');
+        });
+
+        $query->when($request->query('status') === 'blocked', function ($q) {
+            return $q->whereHas('activeBlock');
+        });
+        
+
+        $users = $query->latest()->paginate(10);
 
         $users->getCollection()->transform(function ($user) {
             $user->status = $user->activeBlock ? 'Blocked' : 'Active';
+            if ($user->activeBlock) {
+                // Jika diblokir, cek ada end_time, kalau ga, blokir permanen.
+                $user->end_time = $user->activeBlock->end_time ? \Carbon\Carbon::parse($user->activeBlock->end_time)->format('M d, Y') : 'Permanently';
+            } else {
+                // Jika tidak diblokir, isi -
+                $user->end_time = '-';
+            }
             $user->registered_at = $user->created_at->format('M d, Y');
             unset($user->activeBlock, $user->created_at);
 
