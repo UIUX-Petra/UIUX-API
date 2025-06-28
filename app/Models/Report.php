@@ -13,12 +13,12 @@ class Report extends Model
     use HasFactory, HasUuids;
 
     protected $fillable = [
-        'user_id', 
-        'reportable_id', 
-        'reportable_type', 
-        'report_reason_id', 
-        'status', 
-        'preview', 
+        'user_id',
+        'reportable_id',
+        'reportable_type',
+        'report_reason_id',
+        'status',
+        'preview',
         'additional_notes',
         'reviewed_by',
         'reviewed_at'
@@ -43,8 +43,9 @@ class Report extends Model
         return $this->belongsTo(Admin::class, 'reviewed_by');
     }
 
+
     public function reportable(): MorphTo
     {
-        return $this->morphTo();
+        return $this->morphTo()->withTrashed();
     }
 }

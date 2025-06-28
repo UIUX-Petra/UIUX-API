@@ -105,5 +105,8 @@ class Question extends Model
     {
         return $this->morphMany(History::class, 'searched');
     }
-   
+    public function comments()
+{
+    return $this->morphMany(Comment::class, 'commentable');
+}
 }

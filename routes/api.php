@@ -132,7 +132,7 @@ Route::prefix('admin')->name('admin.')->group(function () {
             Route::post('/users/{user}/unblock', [AdminUserController::class, 'unblockUser'])->name('users.unblock');
             Route::get('/users', [AdminUserController::class, 'getBasicUserInfo'])->name('api.admin.users.index');
             Route::get('/users/{user}/activity', [AdminUserController::class, 'getActivitySummary']);
-            Route::get('/content-detail/{type}/{id}', [AdminUserController::class, 'getContentDetail'])->name('content.detail');
+            // Route::get('/content-detail/{type}/{id}', [AdminUserController::class, 'getContentDetail'])->name('content.detail');
         });
 
         Route::middleware('role.admin:community-manager,super-admin')->group(function () {
