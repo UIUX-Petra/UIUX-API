@@ -1010,14 +1010,15 @@ def find_similar_by_tags():
     q1_img_emb = None
     if image_file and image_file.filename != '':
         q1_img_emb = compute_image_embedding(image_file.stream)
-        
-    tag_ids = [int(tid) for tid in tag_ids_str.split(',') if tid.isdigit()]
+
+    tag_ids = [tid.strip() for tid in tag_ids_str.split(',') if tid.strip()]
     if not tag_ids:
         return jsonify(success=True, duplicates=[])
+
     try:
         conn = conn_pool.get_connection()
         cur = conn.cursor(dictionary=True)
-        
+
         format_strings = ','.join(['%s'] * len(tag_ids))
         query = f"""
             SELECT q.id, q.title, q.question, qe.text_embedding, qe.image_embedding
@@ -1033,7 +1034,6 @@ def find_similar_by_tags():
         conn.close()
 
     except Exception as e:
-        print(f"DB error in find_similar_by_tags: {e}")
         return jsonify(success=False, message="Could not retrieve candidates."), 500
 
     if not candidates:
@@ -1041,30 +1041,29 @@ def find_similar_by_tags():
 
     potential_duplicates = []
     for candidate in candidates:
-        q2_text_emb = np.frombuffer(candidate['text_embedding'], dtype=np.float32)
+        q2_text_emb = np.frombuffer(candidate['text_embedding'], dtype=np.float32) if candidate['text_embedding'] else None
         q2_img_emb = np.frombuffer(candidate['image_embedding'], dtype=np.float32) if candidate['image_embedding'] else None
 
         features_dict = create_features_from_embeddings(
             title, question_text, q1_text_emb, q1_img_emb,
             candidate.get('title', ''), candidate.get('question', ''), q2_text_emb, q2_img_emb
         )
-        
+
         expected_features_order = [
-            'len_char_q1', 'len_char_q2', 'len_word_q1', 'len_word_q2', 'len_diff_word',
-            'fuzz_avg', 'fuzz_max', 'cosine_avg', 'cosine_max', 'cosine_cross_max',
-            'jaccard_title', 'jaccard_question', 'jaccard_cross_avg',
-            'image_similarity'
+            'len_char_q1', 'len_char_q2', 'len_word_q1', 'len_word_q2', 'len_diff_word', 'fuzz_avg', 'fuzz_max', 'cosine_max', 'cosine_avg', 'cosine_cross_max', 'jaccard_title', 'jaccard_question', 'jaccard_cross_avg', 'image_similarity'
         ]
-        
+
         feature_values = [features_dict.get(col, 0.0) for col in expected_features_order]
         features_df = pd.DataFrame([feature_values], columns=expected_features_order)
 
         probability = duplicate_classifier_model.predict_proba(features_df)[:, 1][0] 
+        print(f"DEBUG: Candidate ID {candidate.get('id')} (Title: '{candidate.get('title', '')}'): Probability = {round(float(probability), 4)}") # <--- TAMBAH INI
 
         if probability > 0.5:
             potential_duplicates.append({
                 "id": candidate.get('id'),
                 "title": candidate.get('title', ''),
+                "question": candidate.get('question', ''),
                 "duplication_probability": round(float(probability), 4)
             })
 

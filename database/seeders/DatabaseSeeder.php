@@ -6,6 +6,7 @@ use App\Models\User;
 use Egulias\EmailValidator\Result\Reason\Reason;
 // use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
+use PhpParser\Node\Stmt\Label;
 
 class DatabaseSeeder extends Seeder
 {
@@ -26,5 +27,6 @@ class DatabaseSeeder extends Seeder
         $this->call(ReportReasonSeeder::class);
         $this->call(ReportSeeder::class);
         $this->call(AnnouncementSeeder::class);
+        $this->call(LabeledDuplicatePairSeeder::class);
     }
 }
