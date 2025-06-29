@@ -26,6 +26,7 @@ import spacy
 from langdetect import detect
 from langdetect.lang_detect_exception import LangDetectException
 from fuzzywuzzy import fuzz
+import io
 
 app = Flask(__name__)
 load_dotenv()
@@ -1009,7 +1010,10 @@ def find_similar_by_tags():
     q1_text_emb = compute_text_embedding(f"{title} {question_text}")
     q1_img_emb = None
     if image_file and image_file.filename != '':
-        q1_img_emb = compute_image_embedding(image_file.stream)
+        # Baca stream ke dalam memori dulu
+        image_data = io.BytesIO(image_file.read())
+        # Kirim data dari memori
+        q1_img_emb = compute_image_embedding(image_data)
 
     tag_ids = [tid.strip() for tid in tag_ids_str.split(',') if tid.strip()]
     if not tag_ids:
@@ -1044,14 +1048,16 @@ def find_similar_by_tags():
         q2_text_emb = np.frombuffer(candidate['text_embedding'], dtype=np.float32) if candidate['text_embedding'] else None
         q2_img_emb = np.frombuffer(candidate['image_embedding'], dtype=np.float32) if candidate['image_embedding'] else None
 
+        if q2_text_emb is None: 
+            print(f"WARNING: Candidate {candidate.get('id')} has no text embedding. Skipping feature creation.")
+            continue
+
         features_dict = create_features_from_embeddings(
             title, question_text, q1_text_emb, q1_img_emb,
             candidate.get('title', ''), candidate.get('question', ''), q2_text_emb, q2_img_emb
         )
 
-        expected_features_order = [
-            'len_char_q1', 'len_char_q2', 'len_word_q1', 'len_word_q2', 'len_diff_word', 'fuzz_avg', 'fuzz_max', 'cosine_max', 'cosine_avg', 'cosine_cross_max', 'jaccard_title', 'jaccard_question', 'jaccard_cross_avg', 'image_similarity'
-        ]
+        expected_features_order = duplicate_classifier_model.feature_names_in_
 
         feature_values = [features_dict.get(col, 0.0) for col in expected_features_order]
         features_df = pd.DataFrame([feature_values], columns=expected_features_order)
