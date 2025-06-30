@@ -892,34 +892,6 @@ except Exception as e:
     print(f"ERROR loading duplicate detection models: {e}")
     duplicate_classifier_model = None
 
-def simple_preprocess(text: str) -> str:
-    if not isinstance(text, str): return ""
-    text = text.lower()
-    text = re.sub(r'<.*?>', '', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
-
-def detect_language(text: str) -> str:
-    try:
-        if text and len(text.strip()) > 10: return detect(text)
-        return "unknown"
-    except LangDetectException:
-        return "unknown"
-
-def multilingual_preprocess(text: str) -> str:
-    cleaned_text = simple_preprocess(text)
-    if not cleaned_text: return ""
-    lang = detect_language(cleaned_text)
-    if lang == 'id':
-        stemmed_text = stemmer_id.stem(cleaned_text)
-        return stopword_remover_id.remove(stemmed_text)
-    elif lang == 'en':
-        doc = nlp_en(cleaned_text)
-        tokens = [token.lemma_ for token in doc if not token.is_stop and not token.is_punct]
-        return " ".join(tokens)
-    else:
-        return cleaned_text
-
 def jaccard_similarity(list1, list2):
     s1 = set(list1)
     s2 = set(list2)
