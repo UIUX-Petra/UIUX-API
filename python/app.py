@@ -23,10 +23,10 @@ import joblib
 from Sastrawi.Stemmer.StemmerFactory import StemmerFactory
 from Sastrawi.StopWordRemover.StopWordRemoverFactory import StopWordRemoverFactory
 import spacy
-from langdetect import detect
-from langdetect.lang_detect_exception import LangDetectException
-from fuzzywuzzy import fuzz
 import io
+from apscheduler.schedulers.background import BackgroundScheduler
+from retrain_model import safe_model_retrain
+from shared_features import create_features_from_embeddings, multilingual_preprocess
 
 app = Flask(__name__)
 load_dotenv()
@@ -467,40 +467,16 @@ except Exception as e:
     print(f"ERROR loading NLP helper models: {e}")
     stemmer_id, stopword_remover_id, nlp_en = None, None, None
 
-def simple_preprocess(text: str) -> str:
-    if not isinstance(text, str): return ""
-    text = text.lower()
-    text = re.sub(r'<.*?>', '', text)
-    text = re.sub(r'\s+', ' ', text).strip()
-    return text
+MODEL_PATH = 'duplicate_classifier_model.pkl'
+duplicate_classifier_model = None
+model_last_reloaded = 0
+model_lock = threading.Lock()
 
-def detect_language(text: str) -> str:
-    try:
-        if text and len(text.strip()) > 10: return detect(text)
-        return "unknown"
-    except LangDetectException:
-        return "unknown"
-
-def multilingual_preprocess(text: str) -> str:
-    cleaned_text = simple_preprocess(text)
-    if not cleaned_text: return ""
-    lang = detect_language(cleaned_text)
-    if lang == 'id' and stemmer_id and stopword_remover_id:
-        stemmed_text = stemmer_id.stem(cleaned_text)
-        return stopword_remover_id.remove(stemmed_text)
-    elif lang == 'en' and nlp_en:
-        doc = nlp_en(cleaned_text)
-        tokens = [token.lemma_ for token in doc if not token.is_stop and not token.is_punct]
-        return " ".join(tokens)
-    else:
-        return cleaned_text
-    
 #tag-recommender
 tag_bp = Blueprint('tag_recommender', __name__, url_prefix='/ai')
 CORS(app, resources={r"/ai/*": {"origins": "http://localhost:8000"}})
 
 tag_prototypes = {}
-model_lock = threading.Lock()
 epsilon = 0.1
 learning_rate = 0.01
 TEXT_WEIGHT = 0.7
@@ -883,91 +859,27 @@ def login_face():
         return jsonify(success=False, message="Face not recognized or does not match any user.")
 
 #question-similarity
-try:
-    duplicate_classifier_model = joblib.load('duplicate_classifier_model.pkl')
-    stemmer_id = StemmerFactory().create_stemmer()
-    stopword_remover_id = StopWordRemoverFactory().create_stop_word_remover()
-    nlp_en = spacy.load("en_core_web_sm")
-    print("Successfully loaded duplicate detection models.")
-except Exception as e:
-    print(f"ERROR loading duplicate detection models: {e}")
-    duplicate_classifier_model = None
-
-def jaccard_similarity(list1, list2):
-    s1 = set(list1)
-    s2 = set(list2)
-    if not s1 and not s2: return 0.0
-    return len(s1.intersection(s2)) / len(s1.union(s2))
-
-def get_image_embedding_from_path(image_path_suffix: str) -> np.ndarray:
-    if not image_path_suffix:
-        return None
-    
-    laravel_public_path = os.getenv('PUBLIC_PATH', '../public')
-    if laravel_public_path:
-        full_image_path = os.path.join(laravel_public_path, 'storage', image_path_suffix)
-        return compute_image_embedding(full_image_path)
-    return None
-
-def create_features_from_embeddings(
-    q1_title, q1_question, q1_text_emb, q1_img_emb,
-    q2_title, q2_question, q2_text_emb, q2_img_emb
-):
-    t1_clean = multilingual_preprocess(q1_title)
-    q1_clean = multilingual_preprocess(q1_question)
-    t2_clean = multilingual_preprocess(q2_title)
-    q2_clean = multilingual_preprocess(q2_question)
-    
-    features = {}
-    
-    features['len_char_q1'] = len(q1_question)
-    features['len_char_q2'] = len(q2_question)
-    features['len_word_q1'] = len(q1_question.split())
-    features['len_word_q2'] = len(q2_question.split())
-    features['len_diff_word'] = abs(features['len_word_q1'] - features['len_word_q2']) / max(features['len_word_q1'], features['len_word_q2'], 1)
-    
-    try:
-        fuzz_scores = [fuzz.QRatio(t1_clean, t2_clean)/100.0, fuzz.QRatio(q1_clean, q2_clean)/100.0]
-        features['fuzz_avg'] = np.mean(fuzz_scores)
-        features['fuzz_max'] = np.max(fuzz_scores)
-
-        cosine_sim = 0.0
-        if q1_text_emb is not None and q2_text_emb is not None:
-            norm1 = np.linalg.norm(q1_text_emb)
-            norm2 = np.linalg.norm(q2_text_emb)
-            if norm1 > 0 and norm2 > 0:
-                cosine_sim = np.dot(q1_text_emb, q2_text_emb) / (norm1 * norm2)
-        
-        features['cosine_max'] = cosine_sim
-        features['cosine_avg'] = cosine_sim
-        features['cosine_cross_max'] = cosine_sim
-        
-        t1_tokens, q1_tokens = t1_clean.split(), q1_clean.split()
-        t2_tokens, q2_tokens = t2_clean.split(), q2_clean.split()
-        features['jaccard_title'] = jaccard_similarity(t1_tokens, t2_tokens)
-        features['jaccard_question'] = jaccard_similarity(q1_tokens, q2_tokens)
-        features['jaccard_cross_avg'] = jaccard_similarity(set(t1_tokens + q1_tokens), set(t2_tokens + q2_tokens))
-
-        features['image_similarity'] = 0.0
-        if q1_img_emb is not None and q2_img_emb is not None:
-            norm1 = np.linalg.norm(q1_img_emb)
-            norm2 = np.linalg.norm(q2_img_emb)
-            if norm1 > 0 and norm2 > 0:
-                features['image_similarity'] = np.dot(q1_img_emb, q2_img_emb) / (norm1 * norm2)
-                
-    except Exception as e:
-        print(f"ERROR creating features from embeddings: {e}")
-        keys_to_zero = [
-            'fuzz_avg', 'fuzz_max', 'cosine_avg', 'cosine_max', 'cosine_cross_max', 
-            'jaccard_title', 'jaccard_question', 'jaccard_cross_avg', 'image_similarity'
-        ]
-        for key in keys_to_zero:
-            features[key] = 0.0     
-    return features
-
+def load_model_if_needed():
+    """Checks if the model file on disk is newer and reloads it safely."""
+    global duplicate_classifier_model, model_last_reloaded
+    if not os.path.exists(MODEL_PATH):
+        return
+    disk_last_modified = os.path.getmtime(MODEL_PATH)
+    if disk_last_modified > model_last_reloaded:
+        with model_lock:
+            if os.path.getmtime(MODEL_PATH) > model_last_reloaded:
+                print("New model file detected. Reloading...")
+                try:
+                    duplicate_classifier_model = joblib.load(MODEL_PATH)
+                    model_last_reloaded = time.time()
+                    print("Duplicate detection model reloaded successfully.")
+                except Exception as e:
+                    print(f"CRITICAL ERROR: Failed to reload model: {e}")
+                    
 duplicate_bp = Blueprint('duplicate_detector', __name__, url_prefix='/ai')
 @duplicate_bp.route('/find_similar_by_tags', methods=['POST'])
 def find_similar_by_tags():
+    load_model_if_needed()
     if duplicate_classifier_model is None:
         return jsonify(success=False, message="Duplicate detection model is not ready."), 503
 
@@ -978,13 +890,11 @@ def find_similar_by_tags():
 
     if not title or not tag_ids_str:
         return jsonify(success=False, message="Title and tag_ids are required."), 400
-
+    
     q1_text_emb = compute_text_embedding(f"{title} {question_text}")
     q1_img_emb = None
     if image_file and image_file.filename != '':
-        # Baca stream ke dalam memori dulu
         image_data = io.BytesIO(image_file.read())
-        # Kirim data dari memori
         q1_img_emb = compute_image_embedding(image_data)
 
     tag_ids = [tid.strip() for tid in tag_ids_str.split(',') if tid.strip()]
@@ -1026,7 +936,8 @@ def find_similar_by_tags():
 
         features_dict = create_features_from_embeddings(
             title, question_text, q1_text_emb, q1_img_emb,
-            candidate.get('title', ''), candidate.get('question', ''), q2_text_emb, q2_img_emb
+            candidate.get('title', ''), candidate.get('question', ''), q2_text_emb, q2_img_emb,
+            nlp_en=nlp_en, stemmer_id=stemmer_id, stopword_remover_id=stopword_remover_id
         )
 
         expected_features_order = duplicate_classifier_model.feature_names_in_
@@ -1035,7 +946,7 @@ def find_similar_by_tags():
         features_df = pd.DataFrame([feature_values], columns=expected_features_order)
 
         probability = duplicate_classifier_model.predict_proba(features_df)[:, 1][0] 
-        print(f"DEBUG: Candidate ID {candidate.get('id')} (Title: '{candidate.get('title', '')}'): Probability = {round(float(probability), 4)}") # <--- TAMBAH INI
+        print(f"DEBUG: Candidate ID {candidate.get('id')} (Title: '{candidate.get('title', '')}'): Probability = {round(float(probability), 4)}")
 
         if probability > 0.5:
             potential_duplicates.append({
@@ -1048,6 +959,15 @@ def find_similar_by_tags():
     potential_duplicates.sort(key=lambda x: x['duplication_probability'], reverse=True)
     return jsonify(success=True, duplicates=potential_duplicates)
 
+def schedule_retrain_task():
+    def schedule_retrain():
+        thread = threading.Thread(target=safe_model_retrain)
+        thread.start()
+
+    scheduler = BackgroundScheduler()
+    scheduler.add_job(schedule_retrain, 'interval', days=1, id='daily_retrain')
+    scheduler.start()
+    
 if __name__ == '__main__':
     app.register_blueprint(tag_bp)
     app.register_blueprint(face_bp)
@@ -1062,5 +982,7 @@ if __name__ == '__main__':
     threading.Thread(target=monitor_recommendation_db, args=(2,), daemon=True).start()
     threading.Thread(target=monitor_leaderboard_db, args=(2,), daemon=True).start()
     threading.Thread(target=monitor_tag_model_db, args=(300,), daemon=True).start()
-
+    
+    load_model_if_needed()
+    schedule_retrain_task()
     app.run(debug=True, host='0.0.0.0', use_reloader=False)

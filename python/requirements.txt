@@ -16,3 +16,4 @@ langdetect
 fuzzywuzzy
 xgboost
 python-Levenshtein
+APScheduler

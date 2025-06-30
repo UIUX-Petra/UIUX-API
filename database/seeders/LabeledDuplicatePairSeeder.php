@@ -43,7 +43,8 @@ class LabeledDuplicatePairSeeder extends Seeder
         $processedPairs = [];
 
         if (!function_exists('sorted_pair_key')) {
-            function sorted_pair_key($id1, $id2) {
+            function sorted_pair_key($id1, $id2)
+            {
                 $ids = [$id1, $id2];
                 sort($ids);
                 return implode('-', $ids);
@@ -70,12 +71,12 @@ class LabeledDuplicatePairSeeder extends Seeder
                         $pairKey = sorted_pair_key($q1_id, $q2_id);
                         if (!in_array($pairKey, $processedPairs)) {
                             $labeledPairs[] = [
-                                'id' => (string) Str::uuid(), 
+                                'id' => (string) Str::uuid(),
                                 'question1_id' => $q1_id,
                                 'question2_id' => $q2_id,
                                 'is_duplicate' => 1,
                                 'group_id' => $group_name,
-                                'source' => 'seeder_duplicate', 
+                                'source' => 'seeder_duplicate',
                                 'created_at' => now(),
                                 'updated_at' => now(),
                             ];
@@ -119,6 +120,7 @@ class LabeledDuplicatePairSeeder extends Seeder
                     'is_duplicate' => 0,
                     'group_id' => 'random_non_duplicate',
                     'source' => 'seeder_non_duplicate',
+                    'created_at' => now(),
                     'updated_at' => now(),
                 ];
                 $processedPairs[] = $pairKey;

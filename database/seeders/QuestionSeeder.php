@@ -2,6 +2,7 @@
 
 namespace Database\Seeders;
 
+use App\Jobs\ProcessQuestionAiServices;
 use App\Models\GroupQuestion;
 use App\Models\Question;
 use App\Models\Subject;
@@ -131,13 +132,12 @@ class QuestionSeeder extends Seeder
             }
         }
 
-        $createdQuestions = [];
         foreach ($questionsData as $data) {
             $question = Question::create([
                 'title' => $data['title'],
                 'question' => $data['question'],
                 'user_id' => $userIds[array_rand($userIds)],
-                'image' => (rand(0, 10) < 2) ? 'images/sample_image_' . rand(1, 10) . '.jpg' : null,
+                'image' => null,
                 'vote' => rand(0, 250),
                 'view' => rand(50, 3000),
             ]);
@@ -149,7 +149,13 @@ class QuestionSeeder extends Seeder
                     'question_id' => $question->id,
                     'tag_id' => $subject->id
                 ]);
+                $tagsData = [
+                    'selected_tags' => [$subject->id],
+                    'recommended_tags' => []
+                ];
+                ProcessQuestionAiServices::dispatch($question->id, $tagsData, null);
             }
         }
+        $this->command->info('Questions seeded successfully. Make sure to run your queue worker (`php artisan queue:work`) to process AI embeddings.');
     }
 }
