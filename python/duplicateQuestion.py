@@ -7,14 +7,10 @@ import time
 from datetime import timedelta
 import joblib
 from functools import lru_cache
-
-# Pustaka Eksternal
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 from dotenv import load_dotenv
 from mysql.connector import pooling, Error
-
-# Pustaka NLP
 from sentence_transformers import SentenceTransformer
 from sklearn.metrics.pairwise import cosine_similarity
 from fuzzywuzzy import fuzz
@@ -59,7 +55,6 @@ try:
         nlp_en = None
         print("Model spaCy 'en_core_web_sm' tidak ditemukan. Lematisasi/stopwords teks Inggris mungkin tidak berfungsi.")
 
-    # Model Klasifikasi Duplikat
     classifier_model = joblib.load('duplicate_classifier_model.pkl')
 
 except Exception as e:

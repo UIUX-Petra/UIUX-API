@@ -12,10 +12,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::create('labeled_duplicate_pairs', function (Blueprint $table) {
-            $table->id();
+            $table->uuid('id')->primary(); 
             $table->uuid('question1_id');
             $table->uuid('question2_id');
             $table->boolean('is_duplicate');
+            $table->string('group_id');
             $table->string('source')->default('manual'); 
             $table->timestamps();
 
