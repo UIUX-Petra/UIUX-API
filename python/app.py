@@ -9,7 +9,6 @@ import numpy as np
 import pandas as pd
 import threading, time
 import os
-import re
 from mysql.connector import pooling, Error
 import time
 from datetime import timedelta
@@ -642,8 +641,8 @@ def recommend_tags():
         if score >= dynamic_threshold:
             recommended_ids.append(tid)
     
-    for tid,score,count in all_scored_tags:
-        print(score)
+    for tid, score, count in all_scored_tags:
+        print(f"{tid} {score}")
         
     if not recommended_ids and all_scored_tags:
         best_tag_id = all_scored_tags[0][0] 
@@ -694,22 +693,35 @@ def tag_feedback():
             for tid in selected_tags:
                 if tid in tag_prototypes:
                     proto_text = tag_prototypes[tid]['text']
-                    tag_prototypes[tid]['text'] = proto_text + learning_rate * 1.0 * (text_emb - proto_text)
+                    new_proto_text = proto_text + learning_rate * 1.0 * (text_emb - proto_text)
+                    norm = np.linalg.norm(new_proto_text)
+                    if norm > 0:
+                        tag_prototypes[tid]['text'] = new_proto_text / norm
                     if img_emb is not None and tag_prototypes[tid]['image'] is not None:
                         proto_image = tag_prototypes[tid]['image']
-                        tag_prototypes[tid]['image'] = proto_image + learning_rate * 1.0 * (img_emb - proto_image)
+                        new_proto_image = proto_image + learning_rate * 1.0 * (img_emb - proto_image)
+                        norm = np.linalg.norm(new_proto_image)
+                        if norm > 0:
+                            tag_prototypes[tid]['image'] = new_proto_image / norm
 
             for tid in tags_to_punish:
                 if tid in tag_prototypes:
                     proto_text = tag_prototypes[tid]['text']
-                    tag_prototypes[tid]['text'] = proto_text + learning_rate * -1.0 * (text_emb - proto_text)
+                    new_proto_text = proto_text + learning_rate * -1.0 * (text_emb - proto_text)
+                    norm = np.linalg.norm(new_proto_text)
+                    if norm > 0:
+                        tag_prototypes[tid]['text'] = new_proto_text / norm
                     if img_emb is not None and tag_prototypes[tid]['image'] is not None:
                         proto_image = tag_prototypes[tid]['image']
-                        tag_prototypes[tid]['image'] = proto_image + learning_rate * -1.0 * (img_emb - proto_image)
+                        new_proto_image = proto_image + learning_rate * -1.0 * (img_emb - proto_image)
+                        norm = np.linalg.norm(new_proto_image)
+                        if norm > 0:
+                            tag_prototypes[tid]['image'] = new_proto_image / norm
+                            
         return jsonify(success=True, message="Feedback processed and model updated in memory.")
     except Exception as e:
         print(f"Error in tag_feedback: {e}")
-        return jsonify(success=False, message=f"An error occurred: {e}"), 500
+        return jsonify(success=False, message=f"An error occurred: {e}"), 500   
             
 def monitor_tag_model_db(interval=300):
     while True:
