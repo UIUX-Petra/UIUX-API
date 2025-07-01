@@ -16,6 +16,7 @@ use App\Http\Controllers\HistoryController;
 use App\Http\Controllers\SearchController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\QuestionController;
+use App\Http\Controllers\Admin\QuestionController as AdminQuestionController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\SubjectController;
 use App\Http\Controllers\AnnouncementController;
@@ -119,6 +120,11 @@ Route::prefix('admin')->name('admin.')->group(function () {
         Route::middleware('role.admin:content-manager,super-admin')->group(function () {
             Route::get('/content-detail/{type}/{id}', [AdminReportController::class, 'getContentDetail'])->name('admin.content.detail');
             Route::apiResource('subjects', AdminSubjectController::class);
+
+            Route::post('questions/{id}', [AdminQuestionController::class, 'update'])->name('questions.update');
+            Route::apiResource('questions', AdminQuestionController::class)->except(['update']);
+            Route::put('questions/{id}/restore', [AdminQuestionController::class, 'restore'])->name('questions.restore');
+            Route::delete('questions/force-delete/{id}', [AdminQuestionController::class, 'forceDelete'])->name('questions.forceDelete');
         });
 
         Route::middleware('role.admin:moderator,super-admin')->group(function () {

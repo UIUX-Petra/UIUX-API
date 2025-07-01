@@ -134,7 +134,6 @@ class QuestionController extends BaseController
         }
 
 
-
         DB::beginTransaction();
         try {
             $validatedData = $validator->validated();
